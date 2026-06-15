@@ -1,0 +1,9 @@
+@theme inline {
+  --color-graphite-bg: #1b1b1f;
+  --color-graphite-surface: #26262b;
+  --color-graphite-border: #3a3a42;
+  --color-graphite-text: #e7e7ea;
+  --color-graphite-muted: #a0a0ab;
+  --color-graphite-accent: #6b8afd;
+  --color-graphite-accent-hover: #89a1ff;
+}

@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  FAN
+}
+
+enum CoverType {
+  IMAGE
+  VIDEO
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum MediaType {
+  IMAGE
+  AUDIO
+  VIDEO
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  SPAM
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  firstName      String
+  lastName       String   @default("")
+  passwordHash   String
+  role           Role     @default(ADMIN)
+  avatarUrl      String?
+  avatarPublicId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  articles   Article[]
+  comments   Comment[]
+  loginCodes LoginCode[]
+}
+
+model SiteSettings {
+  id           String   @id @default("main")
+  siteName     String   @default("stepansoukup.cz")
+  logoUrl      String?
+  logoPublicId String?
+  updatedAt    DateTime @updatedAt
+}
+
+model LoginCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Article {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  perex         String        @db.Text
+  content       String?       @db.Text
+  coverType     CoverType     @default(IMAGE)
+  coverImageUrl String?
+  coverVideoUrl String?
+  status        ArticleStatus @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  author      User         @relation(fields: [authorId], references: [id])
+  articleTags ArticleTag[]
+  media       Media[]
+  comments    Comment[]
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  articleTags ArticleTag[]
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+
+  article Article @relation(fields: [articleId], references: [id])
+  tag     Tag     @relation(fields: [tagId], references: [id])
+
+  @@id([articleId, tagId])
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  articleId String
+  type      MediaType
+  url       String
+  publicId  String
+  caption   String?
+  position  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  article Article @relation(fields: [articleId], references: [id])
+}
+
+model Comment {
+  id         String        @id @default(cuid())
+  articleId  String
+  authorId   String?
+  authorName String?
+  body       String        @db.Text
+  parentId   String?
+  status     CommentStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+
+  article Article   @relation(fields: [articleId], references: [id])
+  author  User?     @relation(fields: [authorId], references: [id])
+  parent  Comment?  @relation("CommentThread", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentThread")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  body      String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
