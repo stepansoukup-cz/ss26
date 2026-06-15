@@ -21,12 +21,27 @@ import {
 export type ActionState = {
   error?: string;
   success?: string;
+  redirectTo?: string;
 };
 
 const ADMIN_ROLES: Role[] = [Role.ADMIN, Role.EDITOR];
 
 function formatZodError(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Neplatná data.";
+}
+
+function getLoginRedirectPath(formData: FormData) {
+  const next = formData.get("next");
+  return typeof next === "string" && next.startsWith("/admin")
+    ? next
+    : "/admin/profil";
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Neočekávaná chyba serveru.";
 }
 
 async function establishSession(user: {
@@ -38,11 +53,15 @@ async function establishSession(user: {
     return { error: "K tomuto účtu nemáš přístup do administrace." };
   }
 
-  await setSessionCookie({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  });
+  try {
+    await setSessionCookie({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    return { error: getErrorMessage(error) };
+  }
 
   return { success: "Přihlášení proběhlo úspěšně." };
 }
@@ -51,61 +70,73 @@ export async function loginWithPasswordAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = loginWithPasswordSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  try {
+    const parsed = loginWithPasswordSchema.safeParse({
+      email: formData.get("email"),
+      password: formData.get("password"),
+    });
 
-  if (!parsed.success) {
-    return { error: formatZodError(parsed.error) };
+    if (!parsed.success) {
+      return { error: formatZodError(parsed.error) };
+    }
+
+    const { email, password } = parsed.data;
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return { error: "Nesprávný e-mail nebo heslo." };
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      return { error: "Nesprávný e-mail nebo heslo." };
+    }
+
+    const result = await establishSession(user);
+    if (result.error) {
+      return result;
+    }
+
+    return {
+      success: result.success,
+      redirectTo: getLoginRedirectPath(formData),
+    };
+  } catch (error) {
+    return { error: getErrorMessage(error) };
   }
-
-  const { email, password } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (!user) {
-    return { error: "Nesprávný e-mail nebo heslo." };
-  }
-
-  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordMatches) {
-    return { error: "Nesprávný e-mail nebo heslo." };
-  }
-
-  const result = await establishSession(user);
-  if (result.error) {
-    return result;
-  }
-
-  const next = formData.get("next");
-  redirect(typeof next === "string" && next.startsWith("/admin") ? next : "/admin/profil");
 }
 
 export async function loginWithCodeAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = loginWithCodeSchema.safeParse({
-    email: formData.get("email"),
-    code: formData.get("code"),
-  });
+  try {
+    const parsed = loginWithCodeSchema.safeParse({
+      email: formData.get("email"),
+      code: formData.get("code"),
+    });
 
-  if (!parsed.success) {
-    return { error: formatZodError(parsed.error) };
+    if (!parsed.success) {
+      return { error: formatZodError(parsed.error) };
+    }
+
+    const user = await verifyLoginCode(parsed.data.email, parsed.data.code);
+    if (!user) {
+      return { error: "Neplatný nebo expirovaný kód." };
+    }
+
+    const result = await establishSession(user);
+    if (result.error) {
+      return result;
+    }
+
+    return {
+      success: result.success,
+      redirectTo: getLoginRedirectPath(formData),
+    };
+  } catch (error) {
+    return { error: getErrorMessage(error) };
   }
-
-  const user = await verifyLoginCode(parsed.data.email, parsed.data.code);
-  if (!user) {
-    return { error: "Neplatný nebo expirovaný kód." };
-  }
-
-  const result = await establishSession(user);
-  if (result.error) {
-    return result;
-  }
-
-  const next = formData.get("next");
-  redirect(typeof next === "string" && next.startsWith("/admin") ? next : "/admin/profil");
 }
 
 export async function requestLoginCodeAction(

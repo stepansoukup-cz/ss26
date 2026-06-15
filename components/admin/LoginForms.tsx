@@ -14,6 +14,7 @@ import {
   SubmitButton,
   TextInput,
 } from "@/components/admin/AuthUi";
+import { useLoginRedirect } from "@/components/admin/useLoginRedirect";
 
 const initialState: ActionState = {};
 
@@ -46,6 +47,7 @@ function PasswordLoginForm({ nextPath }: { nextPath?: string }) {
     loginWithPasswordAction,
     initialState,
   );
+  useLoginRedirect(state);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -84,6 +86,7 @@ function CodeLoginForm({ nextPath }: { nextPath?: string }) {
     loginWithCodeAction,
     initialState,
   );
+  useLoginRedirect(state);
 
   return (
     <form action={formAction} className="space-y-4">
