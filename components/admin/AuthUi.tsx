@@ -1,19 +1,29 @@
+import {
+  Alert,
+  inputClassName,
+  textareaClassName,
+} from "@/components/admin/AdminUi";
+
 export function AuthCard({
   title,
   description,
   children,
 }: {
-  title: string;
+  title?: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl border border-graphite-border bg-graphite-surface p-6 shadow-lg shadow-black/20">
-      <h1 className="text-2xl font-medium">{title}</h1>
-      {description ? (
-        <p className="mt-2 text-sm text-graphite-muted">{description}</p>
+    <div className="mx-auto w-full rounded-admin-xl border border-admin-border bg-admin-surface p-6 shadow-admin-md sm:p-8">
+      {title ? (
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       ) : null}
-      <div className="mt-6">{children}</div>
+      {description ? (
+        <p className={`text-sm text-admin-muted${title ? " mt-2" : ""}`}>
+          {description}
+        </p>
+      ) : null}
+      <div className={title || description ? "mt-6" : ""}>{children}</div>
     </div>
   );
 }
@@ -26,8 +36,8 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
-      <span className="text-graphite-muted">{label}</span>
+    <label className="block space-y-2 text-sm">
+      <span className="font-medium text-admin-text">{label}</span>
       {children}
     </label>
   );
@@ -39,44 +49,43 @@ export function TextInput(
   return (
     <input
       {...props}
-      className={`w-full rounded-md border border-graphite-border bg-graphite-bg px-3 py-2 text-graphite-text outline-none transition placeholder:text-graphite-muted focus:border-graphite-accent ${props.className ?? ""}`}
+      className={`${inputClassName} ${props.className ?? ""}`}
     />
   );
 }
 
 export function SubmitButton({
   children,
-  pendingText = "Ukládám…",
+  className,
 }: {
   children: React.ReactNode;
   pendingText?: string;
+  className?: string;
 }) {
   return (
     <button
       type="submit"
-      className="w-full rounded-md bg-graphite-accent px-4 py-2.5 font-medium text-white transition hover:bg-graphite-accent-hover"
+      className={`w-full rounded-admin-md bg-admin-accent px-4 py-2.5 text-sm font-medium text-white shadow-admin-sm transition hover:bg-admin-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-accent/40 ${className ?? ""}`}
     >
       {children}
     </button>
   );
 }
 
-export function FormMessage({ state }: { state?: { error?: string; success?: string } }) {
+export function FormMessage({
+  state,
+}: {
+  state?: { error?: string; success?: string };
+}) {
   if (!state?.error && !state?.success) {
     return null;
   }
 
   if (state.error) {
-    return (
-      <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-        {state.error}
-      </p>
-    );
+    return <Alert variant="error">{state.error}</Alert>;
   }
 
-  return (
-    <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
-      {state.success}
-    </p>
-  );
+  return <Alert variant="success">{state.success}</Alert>;
 }
+
+export { textareaClassName };

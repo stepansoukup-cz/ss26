@@ -9,7 +9,7 @@ export default async function AdminLoginPage({
   const params = await searchParams;
 
   return (
-    <AdminShell title="Přihlášení">
+    <AdminShell title="Přihlášení" variant="auth">
       <LoginForms nextPath={params.next} />
     </AdminShell>
   );

@@ -23,10 +23,7 @@ export function ForgotPasswordForm() {
   );
 
   return (
-    <AuthCard
-      title="Zapomenuté heslo"
-      description="Pošleme ti jednorázový kód. Přihlásíš se jím bez změny hesla — původní heslo zůstane platné."
-    >
+    <AuthCard description="Pošleme ti jednorázový kód. Přihlásíš se jím bez změny hesla — původní heslo zůstane platné.">
       <form action={formAction} className="space-y-4">
         <Field label="E-mail účtu">
           <TextInput
@@ -42,10 +39,10 @@ export function ForgotPasswordForm() {
           {pending ? "Odesílám…" : "Poslat přihlašovací kód"}
         </SubmitButton>
       </form>
-      <p className="mt-6 text-center text-sm text-graphite-muted">
+      <p className="mt-6 text-center text-sm text-admin-muted">
         <Link
           href="/admin/prihlaseni"
-          className="text-graphite-accent transition hover:text-graphite-accent-hover"
+          className="text-admin-accent transition hover:text-admin-accent-hover"
         >
           Zpět na přihlášení
         </Link>

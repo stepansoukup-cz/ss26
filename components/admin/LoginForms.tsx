@@ -20,19 +20,16 @@ const initialState: ActionState = {};
 
 export function LoginForms({ nextPath }: { nextPath?: string }) {
   return (
-    <AuthCard
-      title="Přihlášení"
-      description="Přihlas se e-mailem a heslem, nebo jednorázovým kódem z e-mailu."
-    >
+    <AuthCard description="Přihlas se e-mailem a heslem, nebo jednorázovým kódem z e-mailu.">
       <div className="space-y-8">
         <PasswordLoginForm nextPath={nextPath} />
-        <div className="border-t border-graphite-border pt-8">
+        <div className="border-t border-admin-border-subtle pt-8">
           <CodeLoginForm nextPath={nextPath} />
         </div>
-        <p className="text-center text-sm text-graphite-muted">
+        <p className="text-center text-sm text-admin-muted">
           <Link
             href="/admin/zapomenute-heslo"
-            className="text-graphite-accent transition hover:text-graphite-accent-hover"
+            className="text-admin-accent transition hover:text-admin-accent-hover"
           >
             Zapomněl/a jsem heslo — poslat kód
           </Link>
@@ -51,7 +48,7 @@ function PasswordLoginForm({ nextPath }: { nextPath?: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
-      <h2 className="text-sm font-medium uppercase tracking-[0.15em] text-graphite-muted">
+      <h2 className="text-sm font-medium uppercase tracking-[0.15em] text-admin-muted">
         E-mail a heslo
       </h2>
       {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
@@ -90,7 +87,7 @@ function CodeLoginForm({ nextPath }: { nextPath?: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
-      <h2 className="text-sm font-medium uppercase tracking-[0.15em] text-graphite-muted">
+      <h2 className="text-sm font-medium uppercase tracking-[0.15em] text-admin-muted">
         Přihlášení kódem
       </h2>
       {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}

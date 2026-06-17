@@ -99,7 +99,18 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 
 `/blog/[slug]` **Detail článku**
 
-- Pořadí: cover 16:9 → perex → obsah (text + vložené obrázky/videa) → **galerie** (mřížka obrázků) → **audio přehrávač** (zvukové ukázky) → štítky → **diskuse** (komentáře, vlákna).
+- Pořadí: cover 16:9 → perex → **obsah** (Tiptap JSON: text + vložené bloky) → štítky → **diskuse** (komentáře, vlákna).
+- **Obsah článku** se ukládá jako **Tiptap JSON dokument** (ne HTML). Text lze obohacovat o **vkládací bloky** — **galerie** lze vložit **kdekoli v textu**, včetně **více galerií v jednom článku**; stejným principem později **blok přehrávače** (audio). Pořadí bloků na stránce = pořadí v dokumentu.
+- U článku se zobrazí **„Aktualizováno: datum“** z `updatedAt`, pokud se liší od `publishedAt` o více než cca jeden den.
+- Článek může být i **recenze** (např. hudebního vybavení). Recenze sdílí stejnou strukturu jako běžný článek (cover, perex, obsah, štítky…), navíc má volitelná **hodnotící kritéria** — skóre 0–10:
+  - `score_legacy` (legacy / „dědictví“ produktu),
+  - `score_practicality` (praktičnost),
+  - `score_price` (cena),
+  - `score_sound` (zvuk),
+  - `score_look` (vzhled).
+  Všechna kritéria jsou **nullable** — vyplňuje se jen to, co dává u dané recenze smysl.
+- **`score_overall` se do DB neukládá.** Počítá se vždy dynamicky jako **aritmetický průměr pouze z vyplněných kritérií**. Když není vyplněné žádné kritérium, rating se **nikde nezobrazuje** (ani na detailu, ani na kartě ve výpisu).
+- Recenze může (ale nemusí) být propojená s jedním či více kusy **gearu** — viz budoucí modul Gear (sekce 10).
 
 `/hudba`
 
@@ -120,7 +131,7 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
 
 - Dashboard (počty článků, nepřečtené zprávy, čekající komentáře).
-- Články — CRUD (Tiptap editor, cover/galerie/audio přes Cloudinary, publikovat/skrýt, štítky).
+- Články — CRUD (Tiptap editor, cover/galerie/audio přes Cloudinary, publikovat/skrýt, štítky). U recenzí navíc volitelná hodnotící kritéria (skóre 0–10, viz sekce 7).
 - Štítky — CRUD.
 - Komentáře — moderace (schválit / spam / smazat).
 - Zprávy z formuláře — čtení, označení přečteno.
@@ -129,19 +140,34 @@ Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
 
 Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z `@/lib/prisma`.
 
-**Enumy:** `Role` (ADMIN, EDITOR, FAN) · `CoverType` (IMAGE, VIDEO) · `ArticleStatus` (DRAFT, PUBLISHED) · `MediaType` (IMAGE, AUDIO, VIDEO) · `CommentStatus` (PENDING, APPROVED, SPAM).
+**Enumy:** `Role` (ADMIN, EDITOR, FAN) · `CoverType` (IMAGE, VIDEO) · `ArticleStatus` (DRAFT, PUBLISHED) · `MediaType` (IMAGE, AUDIO, VIDEO) · `ContentBlockType` (GALLERY, AUDIO_PLAYER) · `CommentStatus` (PENDING, APPROVED, SPAM).
 
 - **User**: id, email (unikátní), name, passwordHash, role (default ADMIN), createdAt. Relace: articles (1:N), comments (1:N).
-- **Article**: id, slug (unikátní), title, perex (Text), content (Text, nullable), coverType (default IMAGE), coverImageUrl?, coverVideoUrl?, status (default DRAFT), publishedAt?, authorId (FK→User), createdAt, updatedAt. Relace: author, tags (přes ArticleTag), media (1:N), comments (1:N).
+- **Article**: id, slug (unikátní), title, perex (Text), **content (Text, nullable — Tiptap JSON)**, coverType (default IMAGE), coverImageUrl?, coverVideoUrl?, status (default DRAFT), publishedAt?, authorId (FK→User), createdAt, updatedAt. **Recenze** (volitelně): score_legacy?, score_practicality?, score_price?, score_sound?, score_look? (všechna Int 0–10, nullable). `score_overall` **není sloupec v DB** — počítá se za běhu z vyplněných kritérií. Relace: author, tags (přes ArticleTag), **contentBlocks** (1:N), media (1:N), comments (1:N), gear (přes ArticleGear, M:N — budoucí modul).
+- **ContentBlock**: id, articleId (FK→Article), type (`GALLERY` | `AUDIO_PLAYER`), createdAt. Relace: article, media (1:N). Blok odpovídá vloženému uzlu v JSON (`galleryBlock`, později `audioPlayerBlock`) přes `blockId`.
 - **Tag**: id, name, slug (unikátní). Relace: articles (přes ArticleTag).
 - **ArticleTag** (M:N): articleId (FK), tagId (FK), složený PK.
-- **Media**: id, articleId (FK→Article), type (MediaType), url, publicId, caption?, position (default 0), createdAt.
+- **Media**: id, articleId (FK→Article), **blockId?** (FK→ContentBlock), type (MediaType), url, publicId, caption?, position (default 0, pořadí uvnitř bloku), createdAt.
 - **Comment**: id, articleId (FK→Article), authorId? (FK→User), authorName?, body (Text), parentId? (self-relace, vlákna), status (default PENDING), createdAt.
 - **ContactMessage**: id, name, email, subject?, body (Text), read (default false), createdAt.
 
 ## 10. Budoucí moduly (zatím NESTAVĚT, jen evidence)
 
-Koncerty (`Concert`) · Gear (`GearItem`) · Fanklub (rozšíření User o roli FAN + profil) · File transfer à la WeTransfer jen pro majitele · Admin nástroje převzaté z Nette: fakturace, kalorické tabulky, správa financí. Každý modul až na samostatný pokyn.
+Koncerty (`Concert`) · Fanklub (rozšíření User o roli FAN + profil) · File transfer à la WeTransfer jen pro majitele · Admin nástroje převzaté z Nette: fakturace, kalorické tabulky, správa financí. Každý modul až na samostatný pokyn.
+
+### Gear (`/gear`, `/admin/gear` — zatím nestavět)
+
+Samostatná entita **`Gear`** (nebo `GearItem`) s vlastními informacemi o kusu vybavení: specifikace, jak dlouho ho majitel vlastní, na kolika a kterých koncertech byl použit, fotky atd. Veřejná stránka/karta gearu + CRUD v administraci.
+
+**Recenze (článek) a gear jsou dvě nezávislé entity.** Propojují se přes **relační M:N tabulku** (`ArticleGear` — případně alias `ReviewGear`; recenze = článek s hodnotícími kritérii). Propojení je **volitelné a obousměrné**:
+
+- recenze **může, ale nemusí** odkazovat na jeden či více kusů gearu,
+- gear **může, ale nemusí** mít navázanou jednu či více recenzí,
+- na stránce/kartě gearu se zobrazí **jen prolink** na navázanou recenzi (odkaz na plný detail článku) — **obsah recenze se do karty gearu nenačítá ani neduplikuje**; stejně naopak gear na kartě recenze jen odkaz,
+- **párování je ruční** v administraci; jeden gear může mít **více recenzí**, jedna recenze může odkazovat na **více kusů gearu**,
+- gear i recenzi musí jít vytvořit **nezávisle** (gear bez recenze, recenze bez gearu).
+
+**Stejný model gearu vlastněný víckrát:** pokud majitel vlastní **více kusů stejného modelu** (např. tři stejné kytary), **nikdy se neslučují do jednoho záznamu** — každý kus je **samostatný záznam** s vlastní historií (nákup, koncerty, fotky…). Kusy stejného modelu lze volitelně **seskupit relací (grouping)**; statistiky (počet koncertů, dny vlastnictví…) se u skupiny **dynamicky sčítají** z členů, **přiřazená recenze se zobrazí u všech členů skupiny** (odkaz na stejný článek). Seskupení jde **kdykoli zrušit** — záznamy zůstanou, zmizí jen vazba skupiny.
 
 ---
 

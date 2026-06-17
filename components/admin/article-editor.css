@@ -1,0 +1,74 @@
+.article-editor .ProseMirror {
+  min-height: 18rem;
+  padding: 1rem 1.125rem;
+  color: var(--color-admin-text);
+  outline: none;
+}
+
+.article-editor .ProseMirror > * + * {
+  margin-top: 0.85rem;
+}
+
+.article-editor .ProseMirror p {
+  line-height: 1.65;
+}
+
+.article-editor .ProseMirror h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.article-editor .ProseMirror h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.article-editor .ProseMirror ul,
+.article-editor .ProseMirror ol {
+  padding-left: 1.4rem;
+}
+
+.article-editor .ProseMirror ul {
+  list-style: disc;
+}
+
+.article-editor .ProseMirror ol {
+  list-style: decimal;
+}
+
+.article-editor .ProseMirror li + li {
+  margin-top: 0.35rem;
+}
+
+.article-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--color-admin-accent);
+  padding-left: 1rem;
+  color: var(--color-admin-muted);
+  font-style: italic;
+}
+
+.article-editor .ProseMirror a {
+  color: var(--color-admin-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--color-admin-faint);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.article-editor .ProseMirror:focus-visible {
+  outline: none;
+}
+
+.article-editor .ProseMirror ::selection {
+  background: color-mix(in srgb, var(--color-admin-accent) 28%, transparent);
+}

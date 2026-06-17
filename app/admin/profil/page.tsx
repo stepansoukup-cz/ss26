@@ -10,7 +10,10 @@ export default async function AdminProfilePage() {
   }
 
   return (
-    <AdminShell title="Můj profil">
+    <AdminShell
+      title="Můj profil"
+      description="Osobní údaje, avatar a heslo k administraci."
+    >
       <ProfileSettings user={user} />
     </AdminShell>
   );

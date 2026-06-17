@@ -13,7 +13,10 @@ export default async function AdminSiteSettingsPage() {
   const settings = await getSiteSettings();
 
   return (
-    <AdminShell title="Nastavení webu">
+    <AdminShell
+      title="Nastavení webu"
+      description="Název webu a logo zobrazené na veřejných stránkách."
+    >
       <SiteSettingsPanel settings={settings} />
     </AdminShell>
   );

@@ -1,3 +1,8 @@
+import {
+  MAX_IMAGE_UPLOAD_BYTES,
+  maxImageUploadErrorMessage,
+} from "@/lib/image-upload";
+
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -5,15 +10,16 @@ const ALLOWED_IMAGE_TYPES = new Set([
   "image/gif",
 ]);
 
-export const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024;
+/** @deprecated Použij MAX_IMAGE_UPLOAD_BYTES z lib/image-upload.ts */
+export const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_UPLOAD_BYTES;
 
 export function validateImageFile(file: File) {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     return "Povolené formáty: JPEG, PNG, WebP, GIF.";
   }
 
-  if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    return "Soubor je příliš velký (max. 4 MB).";
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+    return maxImageUploadErrorMessage();
   }
 
   if (file.size === 0) {

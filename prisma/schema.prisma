@@ -30,6 +30,11 @@ enum MediaType {
   VIDEO
 }
 
+enum ContentBlockType {
+  GALLERY
+  AUDIO_PLAYER
+}
+
 enum CommentStatus {
   PENDING
   APPROVED
@@ -80,17 +85,25 @@ model Article {
   title         String
   perex         String        @db.Text
   content       String?       @db.Text
-  coverType     CoverType     @default(IMAGE)
-  coverImageUrl String?
-  coverVideoUrl String?
-  status        ArticleStatus @default(DRAFT)
+  coverType          CoverType     @default(IMAGE)
+  coverImageUrl      String?
+  coverImagePublicId String?
+  coverVideoUrl      String?
+  coverVideoPublicId String?
+  status             ArticleStatus @default(DRAFT)
   publishedAt   DateTime?
+  scoreLegacy       Int?
+  scorePracticality Int?
+  scorePrice        Int?
+  scoreSound        Int?
+  scoreLook         Int?
   authorId      String
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  author      User         @relation(fields: [authorId], references: [id])
+  author      User           @relation(fields: [authorId], references: [id])
   articleTags ArticleTag[]
+  contentBlocks ContentBlock[]
   media       Media[]
   comments    Comment[]
 }
@@ -113,9 +126,22 @@ model ArticleTag {
   @@id([articleId, tagId])
 }
 
+model ContentBlock {
+  id        String           @id @default(cuid())
+  articleId String
+  type      ContentBlockType
+  createdAt DateTime         @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  media   Media[]
+
+  @@index([articleId])
+}
+
 model Media {
   id        String    @id @default(cuid())
   articleId String
+  blockId   String?
   type      MediaType
   url       String
   publicId  String
@@ -123,7 +149,10 @@ model Media {
   position  Int       @default(0)
   createdAt DateTime  @default(now())
 
-  article Article @relation(fields: [articleId], references: [id])
+  article Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  block   ContentBlock? @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([articleId, blockId])
 }
 
 model Comment {

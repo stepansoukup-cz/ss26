@@ -3,7 +3,7 @@ import { ForgotPasswordForm } from "@/components/admin/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
-    <AdminShell title="Zapomenuté heslo">
+    <AdminShell title="Zapomenuté heslo" variant="auth">
       <ForgotPasswordForm />
     </AdminShell>
   );

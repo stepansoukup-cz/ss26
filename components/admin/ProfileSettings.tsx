@@ -16,7 +16,9 @@ import {
   SubmitButton,
   TextInput,
 } from "@/components/admin/AuthUi";
+import { AdminCard } from "@/components/admin/AdminUi";
 import { ImageUploadForm } from "@/components/admin/ImageUploadForm";
+import { MAX_IMAGE_UPLOAD_MB } from "@/lib/image-upload";
 
 const initialState: ActionState = {};
 
@@ -30,47 +32,48 @@ type ProfileUser = {
 
 export function ProfileSettings({ user }: { user: ProfileUser }) {
   return (
-    <div className="space-y-8">
-      <section className="rounded-xl border border-graphite-border bg-graphite-surface p-6">
+    <div className="space-y-6">
+      <AdminCard
+        title="Avatar"
+        description={`Tvoje profilová fotka v administraci. Max. ${MAX_IMAGE_UPLOAD_MB} MB — server obrázek před nahráním zmenší a optimalizuje.`}
+      >
         <ImageUploadForm
           action={uploadAvatarAction}
           currentUrl={user.avatarUrl}
           label="Avatar"
-          description="Tvoje profilová fotka v administraci. Max. 4 MB."
           alt={`Avatar uživatele ${user.firstName}`}
           submitLabel="Nahrát avatar"
           removeAction={removeAvatarFormAction}
           removeLabel="Odstranit avatar"
         />
-      </section>
+      </AdminCard>
 
-      <section className="rounded-xl border border-graphite-border bg-graphite-surface p-6">
-        <h2 className="text-lg font-medium">Osobní údaje</h2>
-        <p className="mt-1 text-sm text-graphite-muted">
-          Uživatelské jméno je vždy tvůj e-mail — nelze měnit.
-        </p>
+      <AdminCard
+        title="Osobní údaje"
+        description="Uživatelské jméno je vždy tvůj e-mail — nelze měnit."
+      >
         <ProfileForm user={user} />
-      </section>
+      </AdminCard>
 
-      <section className="rounded-xl border border-graphite-border bg-graphite-surface p-6">
-        <h2 className="text-lg font-medium">Změna hesla</h2>
-        <p className="mt-1 text-sm text-graphite-muted">
-          Pokud ses přihlásil/a kódem z e-mailu, heslo zůstává beze změny, dokud
-          ho tady sám/ sama nezměníš.
-        </p>
+      <AdminCard
+        title="Změna hesla"
+        description="Pokud ses přihlásil/a kódem z e-mailu, heslo zůstává beze změny, dokud ho tady sám/sama nezměníš."
+      >
         <PasswordForm />
-      </section>
+      </AdminCard>
 
-      <dl className="grid gap-3 rounded-xl border border-graphite-border bg-graphite-surface p-6 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-graphite-muted">E-mail (uživatelské jméno)</dt>
-          <dd className="mt-1 font-medium">{user.email}</dd>
-        </div>
-        <div>
-          <dt className="text-graphite-muted">Role</dt>
-          <dd className="mt-1 font-medium">{user.role}</dd>
-        </div>
-      </dl>
+      <AdminCard title="Účet">
+        <dl className="grid gap-5 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-admin-muted">E-mail (uživatelské jméno)</dt>
+            <dd className="mt-1 font-medium text-admin-text">{user.email}</dd>
+          </div>
+          <div>
+            <dt className="text-admin-muted">Role</dt>
+            <dd className="mt-1 font-medium text-admin-text">{user.role}</dd>
+          </div>
+        </dl>
+      </AdminCard>
     </div>
   );
 }
@@ -82,8 +85,8 @@ function ProfileForm({ user }: { user: ProfileUser }) {
   );
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form action={formAction} className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Jméno">
           <TextInput
             id="firstName"
@@ -101,7 +104,7 @@ function ProfileForm({ user }: { user: ProfileUser }) {
         </Field>
       </div>
       <FormMessage state={state} />
-      <SubmitButton pendingText="Ukládám…">
+      <SubmitButton className="w-auto px-6">
         {pending ? "Ukládám…" : "Uložit profil"}
       </SubmitButton>
     </form>
@@ -115,7 +118,7 @@ function PasswordForm() {
   );
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
+    <form action={formAction} className="space-y-5">
       <Field label="Současné heslo">
         <TextInput
           id="currentPassword"
@@ -146,7 +149,7 @@ function PasswordForm() {
         />
       </Field>
       <FormMessage state={state} />
-      <SubmitButton pendingText="Měním heslo…">
+      <SubmitButton className="w-auto px-6">
         {pending ? "Měním heslo…" : "Změnit heslo"}
       </SubmitButton>
     </form>

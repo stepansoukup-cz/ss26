@@ -8,6 +8,7 @@ import {
 } from "@/lib/cloudinary-upload";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
+import { IMAGE_OPTIMIZE_PRESETS } from "@/lib/image-upload";
 import { getImageFileFromFormData } from "@/lib/validations/media";
 import { updateSiteNameSchema } from "@/lib/validations/site";
 import type { ActionState } from "@/app/admin/actions";
@@ -36,12 +37,7 @@ export async function uploadAvatarAction(
     const uploaded = await uploadImageToCloudinary(
       fileResult.file,
       `ss26/avatars/${user.id}`,
-      {
-        width: 400,
-        height: 400,
-        crop: "fill",
-        gravity: "auto",
-      },
+      { optimize: IMAGE_OPTIMIZE_PRESETS.avatar },
     );
 
     const dbUser = await prisma.user.findUniqueOrThrow({
@@ -141,10 +137,7 @@ export async function uploadSiteLogoAction(
     const uploaded = await uploadImageToCloudinary(
       fileResult.file,
       "ss26/site/logo",
-      {
-        height: 200,
-        crop: "limit",
-      },
+      { optimize: IMAGE_OPTIMIZE_PRESETS.logo },
     );
 
     const settings = await getSiteSettings();
