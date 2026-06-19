@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArticleGallery } from "@/components/blog/ArticleGallery";
+import { ArticleAudioPlayer } from "@/components/blog/ArticleAudioPlayer";
 import type { ArticleDoc, BlockNode, ParagraphNode, TextNode } from "@/lib/article-doc";
-import type { GalleryMediaItem } from "@/lib/content-blocks";
+import type { AudioMediaItem, GalleryMediaItem } from "@/lib/content-block-constants";
 
 function safeHref(href: string | undefined): string | null {
   if (!href?.trim()) {
@@ -68,7 +69,8 @@ function renderInline(content: ParagraphNode["content"]): ReactNode {
 function renderBlock(
   node: BlockNode,
   index: number,
-  mediaByBlock: Map<string, GalleryMediaItem[]>,
+  galleryByBlock: Map<string, GalleryMediaItem[]>,
+  audioByBlock: Map<string, AudioMediaItem[]>,
 ): ReactNode {
   switch (node.type) {
     case "paragraph":
@@ -110,11 +112,13 @@ function renderBlock(
         </ol>
       );
     case "galleryBlock": {
-      const images = mediaByBlock.get(node.attrs.blockId) ?? [];
+      const images = galleryByBlock.get(node.attrs.blockId) ?? [];
       return <ArticleGallery key={index} images={images} />;
     }
-    case "audioPlayerBlock":
-      return null;
+    case "audioPlayerBlock": {
+      const tracks = audioByBlock.get(node.attrs.blockId) ?? [];
+      return <ArticleAudioPlayer key={index} tracks={tracks} />;
+    }
     default:
       return null;
   }
@@ -122,10 +126,12 @@ function renderBlock(
 
 export function ArticleDocRenderer({
   doc,
-  mediaByBlock,
+  galleryByBlock,
+  audioByBlock,
 }: {
   doc: ArticleDoc;
-  mediaByBlock: Map<string, GalleryMediaItem[]>;
+  galleryByBlock: Map<string, GalleryMediaItem[]>;
+  audioByBlock: Map<string, AudioMediaItem[]>;
 }) {
   if (doc.content.length === 0) {
     return null;
@@ -133,7 +139,9 @@ export function ArticleDocRenderer({
 
   return (
     <div className="article-content border-t border-graphite-border pt-8">
-      {doc.content.map((node, index) => renderBlock(node, index, mediaByBlock))}
+      {doc.content.map((node, index) =>
+        renderBlock(node, index, galleryByBlock, audioByBlock),
+      )}
     </div>
   );
 }

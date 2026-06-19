@@ -1,7 +1,7 @@
 export type AdminNavItem = {
   href: string;
   label: string;
-  icon: "articles" | "settings" | "profile" | "tags" | "comments" | "messages";
+  icon: "articles" | "settings" | "profile" | "tags" | "comments" | "messages" | "pages";
   /** Aktivní i na podstránkách, např. /admin/clanky/novy */
   matchPrefix?: boolean;
 };
@@ -20,6 +20,7 @@ export const adminNavSections: AdminNavSection[] = [
     title: "Obsah",
     items: [
       { href: "/admin/clanky", label: "Články", icon: "articles", matchPrefix: true },
+      { href: "/admin/landing-pages", label: "Landing pages", icon: "pages", matchPrefix: true },
       // { href: "/admin/stitky", label: "Štítky", icon: "tags", matchPrefix: true },
       // { href: "/admin/komentare", label: "Komentáře", icon: "comments", matchPrefix: true },
     ],

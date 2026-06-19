@@ -63,7 +63,19 @@ model SiteSettings {
   siteName     String   @default("stepansoukup.cz")
   logoUrl      String?
   logoPublicId String?
+  facebookUrl  String?
+  instagramUrl String?
+  spotifyUrl   String?
+  youtubeUrl   String?
+  tiktokUrl    String?
+  contactEmail String?
   updatedAt    DateTime @updatedAt
+}
+
+model LandingPageContent {
+  slug      String   @id
+  content   Json
+  updatedAt DateTime @updatedAt
 }
 
 model LoginCode {

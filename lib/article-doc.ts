@@ -72,7 +72,7 @@ export const galleryBlockSchema = z.object({
   }),
 });
 
-/** Připraveno pro budoucí audio blok — stejný princip jako galerie. */
+/** Audio blok — stejný princip jako galerie. */
 export const audioPlayerBlockSchema = z.object({
   type: z.literal("audioPlayerBlock"),
   attrs: z.object({

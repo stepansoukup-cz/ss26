@@ -2,8 +2,10 @@ import {
   EMPTY_ARTICLE_DOC,
   type ArticleDoc,
   type BlockNode,
+  type ParagraphNode,
   type TextNode,
 } from "@/lib/article-doc";
+import { normalizeLegacyArticleDoc } from "@/lib/html-to-article-doc";
 
 const MAX_TEXT_NODE_LENGTH = 50_000;
 const MAX_LINKS_PER_DOC = 200;
@@ -136,7 +138,7 @@ function sanitizeBlockNode(node: unknown, linkCount: { value: number }): BlockNo
       }
       const paragraphs = typed.content
         .map((item) => sanitizeBlockNode(item, linkCount))
-        .filter((item): item is BlockNode => item !== null && item.type === "paragraph");
+        .filter((item): item is ParagraphNode => item !== null && item.type === "paragraph");
       return paragraphs.length ? { type: "blockquote", content: paragraphs } : null;
     }
     case "bulletList":
@@ -149,10 +151,11 @@ function sanitizeBlockNode(node: unknown, linkCount: { value: number }): BlockNo
           if (!item || typeof item !== "object" || (item as { type?: string }).type !== "listItem") {
             return null;
           }
-          const paragraphs = ((item as { content?: unknown }).content ?? [])
+          const rawContent = (item as { content?: unknown }).content;
+          const paragraphs = (Array.isArray(rawContent) ? rawContent : [])
             .map((paragraph) => sanitizeBlockNode(paragraph, linkCount))
             .filter(
-              (block): block is BlockNode =>
+              (block): block is ParagraphNode =>
                 block !== null && block.type === "paragraph",
             );
           return paragraphs.length
@@ -196,7 +199,7 @@ export function sanitizeArticleDoc(doc: unknown): ArticleDoc {
     .map((node) => sanitizeBlockNode(node, linkCount))
     .filter((node): node is BlockNode => node !== null);
 
-  return { type: "doc", content };
+  return normalizeLegacyArticleDoc({ type: "doc", content });
 }
 
 export function sanitizeArticleDocForStorage(raw: string): string | null {

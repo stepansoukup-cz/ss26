@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import {
   updateSiteNameAction,
+  updateSiteSocialsAction,
   uploadSiteLogoAction,
   removeSiteLogoFormAction,
 } from "@/app/admin/media-actions";
@@ -22,6 +23,12 @@ const initialState: ActionState = {};
 type SiteSettingsData = {
   siteName: string;
   logoUrl: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  spotifyUrl: string | null;
+  youtubeUrl: string | null;
+  tiktokUrl: string | null;
+  contactEmail: string | null;
 };
 
 export function SiteSettingsPanel({ settings }: { settings: SiteSettingsData }) {
@@ -47,6 +54,13 @@ export function SiteSettingsPanel({ settings }: { settings: SiteSettingsData }) 
           removeLabel="Odstranit logo"
         />
       </AdminCard>
+
+      <AdminCard
+        title="Sociální profily a kontakt"
+        description="Ukládej kompletní URL profilů. Front page je později použije pro odkazy v patičce nebo hlavičce."
+      >
+        <SiteSocialsForm settings={settings} />
+      </AdminCard>
     </div>
   );
 }
@@ -59,7 +73,7 @@ function SiteNameForm({ siteName }: { siteName: string }) {
 
   return (
     <form action={formAction} className="space-y-5">
-      <Field label="Název webu">
+      <Field label="Název webu" htmlFor="siteName">
         <TextInput
           id="siteName"
           name="siteName"
@@ -71,6 +85,78 @@ function SiteNameForm({ siteName }: { siteName: string }) {
       <FormMessage state={state} />
       <SubmitButton className="w-auto px-6">
         {pending ? "Ukládám…" : "Uložit název"}
+      </SubmitButton>
+    </form>
+  );
+}
+
+function SiteSocialsForm({ settings }: { settings: SiteSettingsData }) {
+  const [state, formAction, pending] = useActionState(
+    updateSiteSocialsAction,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Facebook" htmlFor="facebookUrl">
+          <TextInput
+            id="facebookUrl"
+            name="facebookUrl"
+            type="url"
+            defaultValue={settings.facebookUrl ?? ""}
+            placeholder="https://www.facebook.com/..."
+          />
+        </Field>
+        <Field label="Instagram" htmlFor="instagramUrl">
+          <TextInput
+            id="instagramUrl"
+            name="instagramUrl"
+            type="url"
+            defaultValue={settings.instagramUrl ?? ""}
+            placeholder="https://www.instagram.com/..."
+          />
+        </Field>
+        <Field label="Spotify" htmlFor="spotifyUrl">
+          <TextInput
+            id="spotifyUrl"
+            name="spotifyUrl"
+            type="url"
+            defaultValue={settings.spotifyUrl ?? ""}
+            placeholder="https://open.spotify.com/..."
+          />
+        </Field>
+        <Field label="YouTube" htmlFor="youtubeUrl">
+          <TextInput
+            id="youtubeUrl"
+            name="youtubeUrl"
+            type="url"
+            defaultValue={settings.youtubeUrl ?? ""}
+            placeholder="https://www.youtube.com/..."
+          />
+        </Field>
+        <Field label="TikTok" htmlFor="tiktokUrl">
+          <TextInput
+            id="tiktokUrl"
+            name="tiktokUrl"
+            type="url"
+            defaultValue={settings.tiktokUrl ?? ""}
+            placeholder="https://www.tiktok.com/@..."
+          />
+        </Field>
+        <Field label="E-mail" htmlFor="contactEmail">
+          <TextInput
+            id="contactEmail"
+            name="contactEmail"
+            type="email"
+            defaultValue={settings.contactEmail ?? ""}
+            placeholder="mail@example.com"
+          />
+        </Field>
+      </div>
+      <FormMessage state={state} />
+      <SubmitButton className="w-auto px-6">
+        {pending ? "Ukládám…" : "Uložit odkazy"}
       </SubmitButton>
     </form>
   );

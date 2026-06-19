@@ -14,6 +14,7 @@ import {
 } from "@/components/admin/AuthUi";
 import { DeleteArticleSection } from "@/components/admin/DeleteArticleSection";
 import { ArticleContentEditor } from "@/components/admin/ArticleContentEditor";
+import { AutoGrowTextarea } from "@/components/admin/AutoGrowTextarea";
 import { ReviewScoreSliders } from "@/components/admin/ReviewScoreSliders";
 import { TagsInput } from "@/components/admin/TagsInput";
 import {
@@ -145,7 +146,7 @@ export function ArticleForm({
 
         <AdminCard title="Základní údaje">
           <div className="space-y-5">
-            <Field label="Titulek">
+            <Field label="Titulek" htmlFor="title">
               <TextInput
                 id="title"
                 name="title"
@@ -154,7 +155,7 @@ export function ArticleForm({
                 required
               />
             </Field>
-            <Field label="Slug (URL)">
+            <Field label="Slug (URL)" htmlFor="slug">
               <TextInput
                 id="slug"
                 name="slug"
@@ -170,14 +171,13 @@ export function ArticleForm({
             <p className="text-xs text-admin-faint">
               Veřejná adresa: /blog/{slug || "…"}
             </p>
-            <Field label="Perex">
-              <textarea
+            <Field label="Perex" htmlFor="perex">
+              <AutoGrowTextarea
                 id="perex"
                 name="perex"
-                rows={3}
                 defaultValue={defaults.perex}
                 required
-                className={textareaClassName}
+                className={`${textareaClassName} block min-h-28 resize-none overflow-hidden py-2.5 leading-relaxed`}
               />
             </Field>
             <Field label="Obsah">
@@ -202,7 +202,7 @@ export function ArticleForm({
 
         <AdminCard title="Cover (16:9)">
           <div className="space-y-5">
-            <Field label="Typ coveru">
+            <Field label="Typ coveru" htmlFor="coverType">
               <select
                 id="coverType"
                 name="coverType"
@@ -219,7 +219,7 @@ export function ArticleForm({
 
             {coverType === CoverType.IMAGE ? (
               <>
-                <Field label="URL cover obrázku">
+                <Field label="URL cover obrázku" htmlFor="coverImageUrl">
                   <TextInput
                     id="coverImageUrl"
                     name="coverImageUrl"
@@ -274,7 +274,7 @@ export function ArticleForm({
                 ) : null}
               </>
             ) : (
-              <Field label="URL videa (soubor, YouTube nebo Vimeo)">
+              <Field label="URL videa (soubor, YouTube nebo Vimeo)" htmlFor="coverVideoUrl">
                 <TextInput
                   id="coverVideoUrl"
                   name="coverVideoUrl"
@@ -289,7 +289,7 @@ export function ArticleForm({
 
         <AdminCard title="Publikace">
           <div className="space-y-5">
-            <Field label="Status">
+            <Field label="Status" htmlFor="status">
               <select
                 id="status"
                 name="status"

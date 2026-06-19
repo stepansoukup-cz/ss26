@@ -7,6 +7,7 @@ import {
 } from "@/components/blog/ArticleCover";
 import { ArticleBody } from "@/components/blog/ArticleBody";
 import { ArticleReviewScores } from "@/components/blog/ArticleReviewScores";
+import { PublicHeader } from "@/components/site/PublicHeader";
 import { formatPublishedDate, shouldShowArticleUpdated } from "@/lib/blog";
 import { prisma } from "@/lib/prisma";
 import { reviewScoresFromArticle } from "@/lib/review-score";
@@ -140,6 +141,7 @@ export default async function BlogArticlePage({
 
   return (
     <div className="min-h-full bg-graphite-bg text-graphite-text">
+      <PublicHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
         <Link
           href="/"

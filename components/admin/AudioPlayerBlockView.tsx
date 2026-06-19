@@ -3,28 +3,33 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
-  deleteGalleryImageAction,
-  getGalleryMediaAction,
-  reorderGalleryMediaAction,
-  uploadGalleryImageAction,
-} from "@/app/admin/gallery-actions";
-import { Button } from "@/components/admin/AdminUi";
-import { cloudinaryGalleryThumbUrl } from "@/lib/cloudinary-transform";
-import type { GalleryMediaItem } from "@/lib/content-block-constants";
-import { validateImageFile } from "@/lib/validations/media";
+  deleteAudioTrackAction,
+  getAudioMediaAction,
+  reorderAudioMediaAction,
+  updateAudioTrackCaptionAction,
+  uploadAudioTrackAction,
+} from "@/app/admin/audio-actions";
+import { Button, inputClassName } from "@/components/admin/AdminUi";
+import { audioUploadHint } from "@/lib/audio-upload";
+import type { AudioMediaItem } from "@/lib/content-block-constants";
+import { validateAudioFile } from "@/lib/validations/audio";
 
-type GalleryBlockViewProps = NodeViewProps & {
+type AudioPlayerBlockViewProps = NodeViewProps & {
   articleId: string | null;
 };
 
-export function GalleryBlockView({
+function trackLabel(track: AudioMediaItem, index: number) {
+  return track.caption?.trim() || `Stopa ${index + 1}`;
+}
+
+export function AudioPlayerBlockView({
   node,
   deleteNode,
   selected,
   articleId,
-}: GalleryBlockViewProps) {
+}: AudioPlayerBlockViewProps) {
   const blockId = node.attrs.blockId as string;
-  const [items, setItems] = useState<GalleryMediaItem[]>([]);
+  const [items, setItems] = useState<AudioMediaItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -37,10 +42,10 @@ export function GalleryBlockView({
 
     startTransition(async () => {
       try {
-        const media = await getGalleryMediaAction(blockId);
+        const media = await getAudioMediaAction(blockId);
         setItems(media);
       } catch {
-        setError("Galerii se nepodařilo načíst.");
+        setError("Přehrávač se nepodařilo načíst.");
       }
     });
   }, [blockId]);
@@ -58,7 +63,7 @@ export function GalleryBlockView({
     setError(null);
     startTransition(async () => {
       for (const file of Array.from(files)) {
-        const validationError = validateImageFile(file);
+        const validationError = validateAudioFile(file);
         if (validationError) {
           setError(validationError);
           continue;
@@ -66,7 +71,7 @@ export function GalleryBlockView({
 
         const formData = new FormData();
         formData.set("file", file);
-        const result = await uploadGalleryImageAction(articleId, blockId, formData);
+        const result = await uploadAudioTrackAction(articleId, blockId, formData);
         if ("error" in result && result.error) {
           setError(result.error);
         }
@@ -79,9 +84,9 @@ export function GalleryBlockView({
     });
   }
 
-  function handleDeleteImage(mediaId: string) {
+  function handleDeleteTrack(mediaId: string) {
     startTransition(async () => {
-      const result = await deleteGalleryImageAction(mediaId);
+      const result = await deleteAudioTrackAction(mediaId);
       if ("error" in result && result.error) {
         setError(result.error);
         return;
@@ -90,8 +95,25 @@ export function GalleryBlockView({
     });
   }
 
+  function handleCaptionBlur(mediaId: string, value: string) {
+    startTransition(async () => {
+      const result = await updateAudioTrackCaptionAction(mediaId, value);
+      if ("error" in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      if ("media" in result && result.media) {
+        setItems((current) =>
+          current.map((item) =>
+            item.id === mediaId ? { ...item, caption: result.media.caption } : item,
+          ),
+        );
+      }
+    });
+  }
+
   function handleDeleteBlock() {
-    if (!window.confirm("Opravdu smazat celou galerii včetně fotek?")) {
+    if (!window.confirm("Opravdu smazat celý přehrávač včetně audio souborů?")) {
       return;
     }
 
@@ -116,7 +138,7 @@ export function GalleryBlockView({
     setDraggingId(null);
 
     startTransition(async () => {
-      const result = await reorderGalleryMediaAction(
+      const result = await reorderAudioMediaAction(
         blockId,
         current.map((item) => item.id),
       );
@@ -135,14 +157,14 @@ export function GalleryBlockView({
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-admin-text">Galerie</p>
+          <p className="text-sm font-medium text-admin-text">Přehrávač</p>
           <p className="text-xs text-admin-muted">
             {items.length}{" "}
             {items.length === 1
-              ? "fotka"
+              ? "stopa"
               : items.length >= 2 && items.length <= 4
-                ? "fotky"
-                : "fotek"}
+                ? "stopy"
+                : "stop"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -152,7 +174,7 @@ export function GalleryBlockView({
             disabled={!articleId || pending}
             onClick={() => fileInputRef.current?.click()}
           >
-            Nahrát fotky
+            Nahrát audio
           </Button>
           <Button
             type="button"
@@ -160,25 +182,27 @@ export function GalleryBlockView({
             disabled={pending}
             onClick={handleDeleteBlock}
           >
-            Smazat galerii
+            Smazat přehrávač
           </Button>
         </div>
       </div>
 
       {!articleId ? (
         <p className="text-sm text-admin-warning">
-          Nejdřív ulož koncept článku, pak můžeš nahrávat fotky.
+          Nejdřív ulož koncept článku, pak můžeš nahrávat audio.
         </p>
       ) : null}
 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,.mp3,.wav"
         multiple
         className="hidden"
         onChange={handleFilesSelected}
       />
+
+      <p className="mb-3 text-xs text-admin-faint">{audioUploadHint()}</p>
 
       {error ? (
         <p className="mb-3 text-sm text-admin-danger">{error}</p>
@@ -186,39 +210,52 @@ export function GalleryBlockView({
 
       {items.length === 0 ? (
         <div className="rounded-admin-md border border-dashed border-admin-border px-4 py-8 text-center text-sm text-admin-muted">
-          Zatím žádné fotky. Nahraj první obrázky tlačítkem výše.
+          Zatím žádné stopy. Nahraj MP3 nebo WAV tlačítkem výše.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {items.map((item) => (
+        <div className="space-y-3">
+          {items.map((item, index) => (
             <div
               key={item.id}
               draggable
               onDragStart={() => setDraggingId(item.id)}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => handleDrop(item.id)}
-              className={`group relative overflow-hidden rounded-admin-md border border-admin-border bg-admin-bg ${
+              className={`rounded-admin-md border border-admin-border bg-admin-bg p-3 ${
                 draggingId === item.id ? "opacity-60" : ""
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={cloudinaryGalleryThumbUrl(item.url)}
-                alt={item.caption ?? "Fotka v galerii"}
-                className="aspect-square w-full object-cover"
-                draggable={false}
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <label className="block text-xs font-medium text-admin-muted">
+                    Název stopy
+                    <input
+                      type="text"
+                      defaultValue={item.caption ?? ""}
+                      placeholder={trackLabel(item, index)}
+                      className={`${inputClassName} mt-1`}
+                      onBlur={(event) =>
+                        handleCaptionBlur(item.id, event.target.value)
+                      }
+                    />
+                  </label>
+                  <p className="text-xs text-admin-faint">Táhni řádek pro změnu pořadí</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Odebrat stopu"
+                  onClick={() => handleDeleteTrack(item.id)}
+                  className="rounded-admin-md px-2 py-1 text-xs text-admin-danger transition hover:bg-admin-danger-muted"
+                >
+                  Smazat
+                </button>
+              </div>
+              <audio
+                controls
+                preload="metadata"
+                src={item.url}
+                className="w-full"
               />
-              <button
-                type="button"
-                aria-label="Odebrat fotku"
-                onClick={() => handleDeleteImage(item.id)}
-                className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white opacity-0 transition group-hover:opacity-100"
-              >
-                ×
-              </button>
-              <span className="absolute bottom-2 left-2 rounded-admin-sm bg-black/55 px-2 py-0.5 text-[10px] text-white">
-                táhni
-              </span>
             </div>
           ))}
         </div>

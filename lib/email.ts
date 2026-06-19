@@ -34,3 +34,36 @@ export async function sendLoginCodeEmail(email: string, code: string) {
     ].join("\n"),
   });
 }
+
+export type ContactEmailInput = {
+  to: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+};
+
+export async function sendContactEmail({
+  to,
+  name,
+  email,
+  subject,
+  message,
+}: ContactEmailInput) {
+  const resend = getResendClient();
+
+  await resend.emails.send({
+    from: getFromAddress(),
+    to,
+    replyTo: email,
+    subject: `[stepansoukup.cz] ${subject}`,
+    text: [
+      `Jméno: ${name}`,
+      `E-mail: ${email}`,
+      `Předmět: ${subject}`,
+      "",
+      "Zpráva:",
+      message,
+    ].join("\n"),
+  });
+}

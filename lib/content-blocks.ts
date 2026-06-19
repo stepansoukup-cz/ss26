@@ -1,9 +1,17 @@
-import { ContentBlockType, MediaType } from "@prisma/client";
+import "server-only";
+
+import type { ContentBlockType, MediaType } from "@prisma/client";
 import {
   deleteCloudinaryAsset,
   mediaTypeToCloudinaryResource,
 } from "@/lib/cloudinary-upload";
+import { MEDIA_TYPE } from "@/lib/content-block-constants";
 import { prisma } from "@/lib/prisma";
+
+import type {
+  BlockMediaMaps,
+  GalleryMediaItem,
+} from "@/lib/content-block-constants";
 
 export async function createContentBlock(
   articleId: string,
@@ -67,20 +75,38 @@ export async function syncOrphanContentBlocks(
   });
 }
 
-export async function getGalleryMediaForBlocks(blockIds: string[]) {
+function pushMediaItem(
+  map: Map<string, GalleryMediaItem[]>,
+  blockId: string,
+  item: GalleryMediaItem,
+) {
+  const list = map.get(blockId) ?? [];
+  list.push(item);
+  map.set(blockId, list);
+}
+
+export async function getBlockMediaForRender(
+  blockIds: string[],
+): Promise<BlockMediaMaps> {
+  const empty: BlockMediaMaps = {
+    gallery: new Map(),
+    audio: new Map(),
+  };
+
   if (blockIds.length === 0) {
-    return new Map<string, GalleryMediaItem[]>();
+    return empty;
   }
 
   const rows = await prisma.media.findMany({
     where: {
       blockId: { in: blockIds },
-      type: MediaType.IMAGE,
+      type: { in: [MEDIA_TYPE.IMAGE, MEDIA_TYPE.AUDIO] },
     },
     orderBy: [{ blockId: "asc" }, { position: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
       blockId: true,
+      type: true,
       url: true,
       publicId: true,
       caption: true,
@@ -88,29 +114,30 @@ export async function getGalleryMediaForBlocks(blockIds: string[]) {
     },
   });
 
-  const map = new Map<string, GalleryMediaItem[]>();
   for (const row of rows) {
     if (!row.blockId) {
       continue;
     }
-    const list = map.get(row.blockId) ?? [];
-    list.push({
+
+    const item = {
       id: row.id,
       url: row.url,
       publicId: row.publicId,
       caption: row.caption,
       position: row.position,
-    });
-    map.set(row.blockId, list);
+    };
+
+    if (row.type === MEDIA_TYPE.IMAGE) {
+      pushMediaItem(empty.gallery, row.blockId, item);
+    } else if (row.type === MEDIA_TYPE.AUDIO) {
+      pushMediaItem(empty.audio, row.blockId, item);
+    }
   }
 
-  return map;
+  return empty;
 }
 
-export type GalleryMediaItem = {
-  id: string;
-  url: string;
-  publicId: string;
-  caption: string | null;
-  position: number;
-};
+export async function getGalleryMediaForBlocks(blockIds: string[]) {
+  const { gallery } = await getBlockMediaForRender(blockIds);
+  return gallery;
+}

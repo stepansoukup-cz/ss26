@@ -6,6 +6,7 @@ import {
   maxImageUploadErrorMessage,
   type ImageOptimizePreset,
 } from "@/lib/image-upload";
+import { maxAudioUploadErrorMessage } from "@/lib/audio-upload";
 
 export type CloudinaryResourceType = "image" | "video" | "raw";
 
@@ -153,4 +154,64 @@ export function formatCloudinaryUploadError(error: unknown) {
 
 export async function deleteCloudinaryImage(publicId: string) {
   return deleteCloudinaryAsset(publicId, "image");
+}
+
+export type UploadedAudio = {
+  url: string;
+  publicId: string;
+};
+
+export async function uploadAudioToCloudinary(file: File, folder: string) {
+  ensureCloudinaryConfig();
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mimeType =
+    file.type && file.type.startsWith("audio/") ? file.type : "audio/mpeg";
+  const dataUri = `data:${mimeType};base64,${buffer.toString("base64")}`;
+
+  let result;
+  try {
+    result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: "video",
+    });
+  } catch (error) {
+    throw new Error(formatCloudinaryAudioUploadError(error));
+  }
+
+  if (!result.secure_url || !result.public_id) {
+    throw new Error("Cloudinary nevrátilo URL nahraného audio souboru.");
+  }
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+  } satisfies UploadedAudio;
+}
+
+export function formatCloudinaryAudioUploadError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+  if (message.includes("too large") || message.includes("max bytes")) {
+    return maxAudioUploadErrorMessage();
+  }
+
+  if (
+    message.includes("invalid") ||
+    message.includes("format") ||
+    message.includes("not supported")
+  ) {
+    return "Nepodporovaný formát audio. Použij MP3 nebo WAV.";
+  }
+
+  if (message.includes("cloudinary") && message.includes("config")) {
+    return "Chyba připojení k Cloudinary. Zkontroluj nastavení na serveru.";
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Audio se nepodařilo nahrát. Zkus to znovu nebo použij jiný soubor.";
 }

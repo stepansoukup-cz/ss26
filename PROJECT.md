@@ -100,7 +100,7 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 `/blog/[slug]` **Detail článku**
 
 - Pořadí: cover 16:9 → perex → **obsah** (Tiptap JSON: text + vložené bloky) → štítky → **diskuse** (komentáře, vlákna).
-- **Obsah článku** se ukládá jako **Tiptap JSON dokument** (ne HTML). Text lze obohacovat o **vkládací bloky** — **galerie** lze vložit **kdekoli v textu**, včetně **více galerií v jednom článku**; stejným principem později **blok přehrávače** (audio). Pořadí bloků na stránce = pořadí v dokumentu.
+- **Obsah článku** se ukládá jako **Tiptap JSON dokument** (ne HTML). Text lze obohacovat o **vkládací bloky** — **galerie** a **přehrávač (audio)** lze vložit **kdekoli v textu**, včetně **více bloků stejného typu v jednom článku** (kombinace galerie + přehrávače). Pořadí bloků na stránce = pořadí v dokumentu.
 - U článku se zobrazí **„Aktualizováno: datum“** z `updatedAt`, pokud se liší od `publishedAt` o více než cca jeden den.
 - Článek může být i **recenze** (např. hudebního vybavení). Recenze sdílí stejnou strukturu jako běžný článek (cover, perex, obsah, štítky…), navíc má volitelná **hodnotící kritéria** — skóre 0–10:
   - `score_legacy` (legacy / „dědictví“ produktu),
@@ -144,7 +144,7 @@ Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z
 
 - **User**: id, email (unikátní), name, passwordHash, role (default ADMIN), createdAt. Relace: articles (1:N), comments (1:N).
 - **Article**: id, slug (unikátní), title, perex (Text), **content (Text, nullable — Tiptap JSON)**, coverType (default IMAGE), coverImageUrl?, coverVideoUrl?, status (default DRAFT), publishedAt?, authorId (FK→User), createdAt, updatedAt. **Recenze** (volitelně): score_legacy?, score_practicality?, score_price?, score_sound?, score_look? (všechna Int 0–10, nullable). `score_overall` **není sloupec v DB** — počítá se za běhu z vyplněných kritérií. Relace: author, tags (přes ArticleTag), **contentBlocks** (1:N), media (1:N), comments (1:N), gear (přes ArticleGear, M:N — budoucí modul).
-- **ContentBlock**: id, articleId (FK→Article), type (`GALLERY` | `AUDIO_PLAYER`), createdAt. Relace: article, media (1:N). Blok odpovídá vloženému uzlu v JSON (`galleryBlock`, později `audioPlayerBlock`) přes `blockId`.
+- **ContentBlock**: id, articleId (FK→Article), type (`GALLERY` | `AUDIO_PLAYER`), createdAt. Relace: article, media (1:N). Blok odpovídá vloženému uzlu v JSON (`galleryBlock`, `audioPlayerBlock`) přes `blockId`.
 - **Tag**: id, name, slug (unikátní). Relace: articles (přes ArticleTag).
 - **ArticleTag** (M:N): articleId (FK), tagId (FK), složený PK.
 - **Media**: id, articleId (FK→Article), **blockId?** (FK→ContentBlock), type (MediaType), url, publicId, caption?, position (default 0, pořadí uvnitř bloku), createdAt.

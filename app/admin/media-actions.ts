@@ -10,7 +10,10 @@ import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { IMAGE_OPTIMIZE_PRESETS } from "@/lib/image-upload";
 import { getImageFileFromFormData } from "@/lib/validations/media";
-import { updateSiteNameSchema } from "@/lib/validations/site";
+import {
+  updateSiteNameSchema,
+  updateSiteSocialsSchema,
+} from "@/lib/validations/site";
 import type { ActionState } from "@/app/admin/actions";
 
 function formatZodError(error: { issues: { message: string }[] }) {
@@ -120,6 +123,39 @@ export async function updateSiteNameAction(
 
   revalidateAdminSettings();
   return { success: "Název webu byl uložen." };
+}
+
+export async function updateSiteSocialsAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireUser();
+
+  const parsed = updateSiteSocialsSchema.safeParse({
+    facebookUrl: formData.get("facebookUrl"),
+    instagramUrl: formData.get("instagramUrl"),
+    spotifyUrl: formData.get("spotifyUrl"),
+    youtubeUrl: formData.get("youtubeUrl"),
+    tiktokUrl: formData.get("tiktokUrl"),
+    contactEmail: formData.get("contactEmail"),
+  });
+
+  if (!parsed.success) {
+    return { error: formatZodError(parsed.error) };
+  }
+
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    create: {
+      id: "main",
+      siteName: "stepansoukup.cz",
+      ...parsed.data,
+    },
+    update: parsed.data,
+  });
+
+  revalidateAdminSettings();
+  return { success: "Sociální profily a kontakt byly uloženy." };
 }
 
 export async function uploadSiteLogoAction(

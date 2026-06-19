@@ -30,16 +30,29 @@ export function AuthCard({
 
 export function Field({
   label,
+  htmlFor,
   children,
 }: {
   label: string;
+  /**
+   * Id přidruženého ovládacího prvku. Záměrně NEobalujeme children do <label>,
+   * protože <label> bez htmlFor přeposílá kliknutí na svůj první formulářový
+   * prvek — u složených widgetů (editor s toolbarem) by klik kamkoliv spustil
+   * první tlačítko (např. H2).
+   */
+  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-2 text-sm">
-      <span className="font-medium text-admin-text">{label}</span>
+    <div className="block space-y-2 text-sm">
+      <label
+        htmlFor={htmlFor}
+        className="block font-medium text-admin-text"
+      >
+        {label}
+      </label>
       {children}
-    </label>
+    </div>
   );
 }
 

@@ -3,9 +3,13 @@
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor, type Editor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { createGalleryBlockAction } from "@/app/admin/gallery-actions";
-import { GalleryBlock } from "@/components/admin/extensions/content-blocks";
+import { createAudioPlayerBlockAction } from "@/app/admin/audio-actions";
+import {
+  AudioPlayerBlock,
+  GalleryBlock,
+} from "@/components/admin/extensions/content-blocks";
 import {
   EMPTY_ARTICLE_DOC,
   prepareContentForEditor,
@@ -54,12 +58,16 @@ function EditorToolbar({
   editor,
   articleId,
   onInsertGallery,
+  onInsertAudio,
   galleryPending,
+  audioPending,
 }: {
   editor: Editor;
   articleId?: string;
   onInsertGallery: () => void;
+  onInsertAudio: () => void;
   galleryPending: boolean;
+  audioPending: boolean;
 }) {
   function setLink() {
     const previousUrl = editor.getAttributes("link").href as string | undefined;
@@ -92,7 +100,7 @@ function EditorToolbar({
     <div className="flex flex-wrap items-center gap-1 border-b border-admin-border-subtle bg-admin-surface-muted px-2 py-2">
       <ToolbarButton
         label="Nadpis 2"
-        active={editor.isActive("heading", { level: 2 })}
+        active={editor.isFocused && editor.isActive("heading", { level: 2 })}
         onClick={() =>
           editor.chain().focus().toggleHeading({ level: 2 }).run()
         }
@@ -101,7 +109,7 @@ function EditorToolbar({
       </ToolbarButton>
       <ToolbarButton
         label="Nadpis 3"
-        active={editor.isActive("heading", { level: 3 })}
+        active={editor.isFocused && editor.isActive("heading", { level: 3 })}
         onClick={() =>
           editor.chain().focus().toggleHeading({ level: 3 }).run()
         }
@@ -161,6 +169,13 @@ function EditorToolbar({
       >
         Galerie
       </ToolbarButton>
+      <ToolbarButton
+        label="Vložit přehrávač"
+        disabled={!articleId || audioPending}
+        onClick={onInsertAudio}
+      >
+        Přehrávač
+      </ToolbarButton>
     </div>
   );
 }
@@ -179,14 +194,22 @@ export function ArticleContentEditor({
   defaultValue?: string;
   articleId?: string;
 }) {
-  const initialDoc = prepareContentForEditor(defaultValue);
+  // Počáteční dokument vytvoříme jednou — Tiptap v3 useEditor reaguje na změny
+  // options, takže nestabilní reference (extensions/content) by editor
+  // rekonfigurovaly při každém re-renderu (např. selectionUpdate).
+  const initialDoc = useMemo(
+    () => prepareContentForEditor(defaultValue),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const [json, setJson] = useState(() => serializeArticleDoc(initialDoc));
   const [, refreshToolbar] = useState(0);
   const [galleryPending, startGalleryTransition] = useTransition();
+  const [audioPending, startAudioTransition] = useTransition();
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         heading: { levels: [2, 3] },
         code: false,
@@ -206,7 +229,16 @@ export function ArticleContentEditor({
         },
       }),
       GalleryBlock.configure({ articleId: articleId ?? null }),
+      AudioPlayerBlock.configure({ articleId: articleId ?? null }),
     ],
+    // articleId se po prvním renderu nemění — editor se vytvoří jednou
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions,
     content: initialDoc as JSONContent,
     editorProps: {
       attributes: {
@@ -229,11 +261,9 @@ export function ArticleContentEditor({
     };
 
     editor.on("selectionUpdate", refresh);
-    editor.on("transaction", refresh);
 
     return () => {
       editor.off("selectionUpdate", refresh);
-      editor.off("transaction", refresh);
     };
   }, [editor]);
 
@@ -264,6 +294,33 @@ export function ArticleContentEditor({
     });
   }
 
+  function insertAudioPlayer() {
+    if (!articleId || !editor) {
+      return;
+    }
+
+    startAudioTransition(async () => {
+      try {
+        const { blockId } = await createAudioPlayerBlockAction(articleId);
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: "audioPlayerBlock",
+            attrs: { blockId },
+          })
+          .run();
+        setJson(serializeArticleDoc(normalizeDoc(editor)));
+      } catch (error) {
+        window.alert(
+          error instanceof Error
+            ? error.message
+            : "Přehrávač se nepodařilo vytvořit.",
+        );
+      }
+    });
+  }
+
   if (!editor) {
     return (
       <div className="rounded-admin-lg border border-admin-border bg-admin-bg px-4 py-10 text-sm text-admin-muted">
@@ -279,11 +336,13 @@ export function ArticleContentEditor({
         editor={editor}
         articleId={articleId}
         onInsertGallery={insertGallery}
+        onInsertAudio={insertAudioPlayer}
         galleryPending={galleryPending}
+        audioPending={audioPending}
       />
       {!articleId ? (
         <p className="border-b border-admin-border-subtle px-4 py-2 text-xs text-admin-muted">
-          Galerie půjde vkládat až po prvním uložení konceptu článku.
+          Galerie a přehrávač půjdou vkládat až po prvním uložení konceptu článku.
         </p>
       ) : null}
       <EditorContent editor={editor} />

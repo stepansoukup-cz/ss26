@@ -10,6 +10,7 @@
 }
 
 .article-editor .ProseMirror p {
+  font-size: var(--text-admin-body);
   line-height: 1.65;
 }
 

@@ -1,12 +1,13 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
+import { AudioPlayerBlockView } from "@/components/admin/AudioPlayerBlockView";
 import { GalleryBlockView } from "@/components/admin/GalleryBlockView";
 
-export type GalleryBlockOptions = {
+export type ContentBlockExtensionOptions = {
   articleId: string | null;
 };
 
-export const GalleryBlock = Node.create<GalleryBlockOptions>({
+export const GalleryBlock = Node.create<ContentBlockExtensionOptions>({
   name: "galleryBlock",
   group: "block",
   atom: true,
@@ -52,8 +53,7 @@ export const GalleryBlock = Node.create<GalleryBlockOptions>({
   },
 });
 
-/** Připraveno pro budoucí audio blok — stejný princip. */
-export const AudioPlayerBlock = Node.create<GalleryBlockOptions>({
+export const AudioPlayerBlock = Node.create<ContentBlockExtensionOptions>({
   name: "audioPlayerBlock",
   group: "block",
   atom: true,
@@ -70,6 +70,10 @@ export const AudioPlayerBlock = Node.create<GalleryBlockOptions>({
     return {
       blockId: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-block-id"),
+        renderHTML: (attributes) => ({
+          "data-block-id": attributes.blockId,
+        }),
       },
     };
   },
@@ -84,4 +88,16 @@ export const AudioPlayerBlock = Node.create<GalleryBlockOptions>({
       mergeAttributes(HTMLAttributes, { "data-type": "audio-player-block" }),
     ];
   },
+
+  addNodeView() {
+    return ReactNodeViewRenderer((props) => (
+      <AudioPlayerBlockView
+        {...props}
+        articleId={props.extension.options.articleId}
+      />
+    ));
+  },
 });
+
+/** @deprecated alias pro zpětnou kompatibilitu */
+export type GalleryBlockOptions = ContentBlockExtensionOptions;

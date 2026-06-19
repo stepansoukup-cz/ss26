@@ -1,4 +1,4 @@
-import type { GalleryMediaItem } from "@/lib/content-blocks";
+import type { GalleryMediaItem } from "@/lib/content-block-constants";
 import {
   ArticleGalleryLightbox,
   type GalleryImage,

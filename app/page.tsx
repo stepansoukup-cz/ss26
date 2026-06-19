@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArticleStatus } from "@prisma/client";
 import { ArticleCover } from "@/components/blog/ArticleCover";
 import { BlogTagFilter } from "@/components/blog/BlogTagFilter";
+import { PublicHeader } from "@/components/site/PublicHeader";
 import { formatPublishedDate } from "@/lib/blog";
 import { prisma } from "@/lib/prisma";
 import { getPublishedTags } from "@/lib/tags";
@@ -83,19 +84,8 @@ export default async function HomePage({
 
   return (
     <div className="min-h-full bg-graphite-bg text-graphite-text">
+      <PublicHeader />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
-        <header className="mb-8 border-b border-graphite-border pb-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-graphite-muted">
-            Blog
-          </p>
-          <h1 className="mt-2 text-3xl font-medium sm:text-4xl">
-            stepansoukup.cz
-          </h1>
-          <p className="mt-3 max-w-2xl text-graphite-muted">
-            Hudba, programování, studio a články z první ruky.
-          </p>
-        </header>
-
         {allTags.length > 0 ? (
           <div className="mb-10">
             <BlogTagFilter tags={allTags} selected={validSelected} />

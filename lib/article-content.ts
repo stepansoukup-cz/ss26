@@ -4,6 +4,11 @@ import {
   plainTextToArticleDoc,
   type ArticleDoc,
 } from "@/lib/article-doc";
+import {
+  htmlToArticleDoc,
+  isHtmlContent,
+  normalizeLegacyArticleDoc,
+} from "@/lib/html-to-article-doc";
 import { sanitizeArticleDoc } from "@/lib/sanitize-article-doc";
 
 export { EMPTY_ARTICLE_DOC, parseArticleDoc, plainTextToArticleDoc, type ArticleDoc };
@@ -15,13 +20,19 @@ export function prepareContentForEditor(content: string | null | undefined): Art
   }
 
   const trimmed = content.trim();
+
   if (trimmed.startsWith("{")) {
     try {
-      return sanitizeArticleDoc(JSON.parse(trimmed));
+      const parsed = sanitizeArticleDoc(JSON.parse(trimmed));
+      return normalizeLegacyArticleDoc(parsed);
     } catch {
       return EMPTY_ARTICLE_DOC;
     }
   }
 
-  return plainTextToArticleDoc(trimmed);
+  if (isHtmlContent(trimmed)) {
+    return sanitizeArticleDoc(htmlToArticleDoc(trimmed));
+  }
+
+  return sanitizeArticleDoc(plainTextToArticleDoc(trimmed));
 }
