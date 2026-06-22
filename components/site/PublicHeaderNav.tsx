@@ -89,6 +89,12 @@ export function PublicHeaderNav({ socialLinks }: { socialLinks: SocialLink[] }) 
         Blog
       </Link>
       <Link
+        href="/hudba"
+        className={textClassName(isActive(pathname, "/hudba"))}
+      >
+        Hudba
+      </Link>
+      <Link
         href="/webove-aplikace"
         className={textClassName(isActive(pathname, "/webove-aplikace"))}
       >

@@ -35,6 +35,25 @@ export async function sendLoginCodeEmail(email: string, code: string) {
   });
 }
 
+export async function sendPasswordChangeCodeEmail(email: string, code: string) {
+  const resend = getResendClient();
+
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: email,
+    subject: "Kód pro změnu hesla v administraci",
+    text: [
+      "Požádal/a jsi o změnu hesla do administrace stepansoukup.cz.",
+      "",
+      `Tvůj potvrzovací kód: ${code}`,
+      "",
+      "Kód platí 15 minut. Heslo se změní až po zadání tohoto kódu v administraci.",
+      "",
+      "Pokud jsi o změnu hesla nežádal/a, tento e-mail ignoruj.",
+    ].join("\n"),
+  });
+}
+
 export type ContactEmailInput = {
   to: string;
   name: string;

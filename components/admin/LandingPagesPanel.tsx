@@ -5,6 +5,7 @@ import { updateLandingPageAction } from "@/app/admin/landing-pages/actions";
 import type { ActionState } from "@/app/admin/actions";
 import {
   AdminCard,
+  fileInputClassName,
   inputClassName,
   textareaClassName,
 } from "@/components/admin/AdminUi";
@@ -91,6 +92,7 @@ function LandingPageForm({
     updateLandingPageAction,
     initialState,
   );
+  const isMusicPage = slug === "hudba";
 
   return (
     <AdminCard
@@ -140,6 +142,27 @@ function LandingPageForm({
               defaultValue={content.hero.secondaryLabel}
             />
           </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="URL promo fotky" htmlFor={`${slug}-hero-image`}>
+              <input
+                id={`${slug}-hero-image`}
+                name="hero.imageUrl"
+                type="url"
+                defaultValue={content.hero.imageUrl ?? ""}
+                placeholder="https://res.cloudinary.com/..."
+                className={inputClassName}
+              />
+            </Field>
+            <Field label="Nahrát promo fotku" htmlFor={`${slug}-hero-image-file`}>
+              <input
+                id={`${slug}-hero-image-file`}
+                name="hero.imageFile"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className={fileInputClassName}
+              />
+            </Field>
+          </div>
         </section>
 
         {content.sections.map((section, index) => (
@@ -169,6 +192,27 @@ function LandingPageForm({
                 />
               </Field>
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Nahrát obrázek sekce" htmlFor={`${slug}-${section.id}-image-file`}>
+                <input
+                  id={`${slug}-${section.id}-image-file`}
+                  name={`sections.${index}.imageFile`}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className={fileInputClassName}
+                />
+              </Field>
+              <Field label="URL odkazu / embedu" htmlFor={`${slug}-${section.id}-link`}>
+                <input
+                  id={`${slug}-${section.id}-link`}
+                  name={`sections.${index}.linkUrl`}
+                  type="url"
+                  defaultValue={section.linkUrl ?? ""}
+                  placeholder="https://..."
+                  className={inputClassName}
+                />
+              </Field>
+            </div>
             <Field label="Nadpis" htmlFor={`${slug}-${section.id}-title`}>
               <TextInput
                 id={`${slug}-${section.id}-title`}
@@ -185,9 +229,36 @@ function LandingPageForm({
             <LinesField
               id={`${slug}-${section.id}-bullets`}
               name={`sections.${index}.bullets`}
-              label="Štítky / body (každý na nový řádek)"
+              label={
+                isMusicPage && section.id === "videoklipy"
+                  ? "YouTube URL (každá na nový řádek, max. 3)"
+                  : "Štítky / body (každý na nový řádek)"
+              }
               values={section.bullets}
             />
+            {isMusicPage && section.id === "fotky" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <LinesField
+                  id={`${slug}-${section.id}-gallery-urls`}
+                  name={`sections.${index}.galleryImageUrls`}
+                  label="URL fotek galerie (max. 3, každá na nový řádek)"
+                  values={section.galleryImageUrls ?? []}
+                />
+                <Field
+                  label="Nahrát fotky galerie (max. 3)"
+                  htmlFor={`${slug}-${section.id}-gallery-files`}
+                >
+                  <input
+                    id={`${slug}-${section.id}-gallery-files`}
+                    name={`sections.${index}.galleryImageFiles`}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className={fileInputClassName}
+                  />
+                </Field>
+              </div>
+            ) : null}
           </section>
         ))}
 

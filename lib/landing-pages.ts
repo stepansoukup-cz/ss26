@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 
-export type LandingPageSlug = "webove-aplikace" | "nahravani";
+export type LandingPageSlug = "webove-aplikace" | "nahravani" | "hudba";
 
 export type LandingPageSection = {
   id: string;
@@ -12,6 +12,8 @@ export type LandingPageSection = {
   text: string;
   bullets: string[];
   imageUrl: string | null;
+  linkUrl?: string | null;
+  galleryImageUrls?: string[];
   illustration: string;
   reverse?: boolean;
   tone?: "dark" | "surface";
@@ -38,6 +40,7 @@ export type LandingPageContent = {
     text: string;
     primaryLabel: string;
     secondaryLabel: string;
+    imageUrl?: string | null;
   };
   sections: LandingPageSection[];
   references: LandingPageReferenceBlock;
@@ -47,6 +50,7 @@ export type LandingPageContent = {
 export const landingPageLabels: Record<LandingPageSlug, string> = {
   "webove-aplikace": "Webové aplikace",
   nahravani: "Studio / nahrávání",
+  hudba: "Hudba",
 };
 
 export const defaultLandingPages: Record<LandingPageSlug, LandingPageContent> = {
@@ -199,6 +203,95 @@ export const defaultLandingPages: Record<LandingPageSlug, LandingPageContent> = 
       buttonLabel: "Přejít na kontaktní formulář",
     },
   },
+  hudba: {
+    hero: {
+      eyebrow: "Hudba",
+      title: "Štěpán Soukup. Kytara, songy a vlastní hudební svět.",
+      text: "Muzikant, kytarista a autor, který se pohybuje mezi kapelovým pódiem, studiovou prací a vlastní tvorbou.",
+      primaryLabel: "Napsat přes kontakt",
+      secondaryLabel: "Poslechnout na Spotify",
+      imageUrl: null,
+    },
+    sections: [
+      {
+        id: "zakazane-ovoce",
+        navLabel: "Zakázané ovoce",
+        icon: "guitar",
+        eyebrow: "Kapela",
+        title: "Jsem kytarista kapely Zakázané ovoce.",
+        text: "Tahle stránka je rozcestník k mojí osobní hudební části. Kompletní informace o kapele najdeš přímo na webu Zakázaného ovoce.",
+        bullets: ["kytara", "kapela", "koncerty"],
+        imageUrl: null,
+        linkUrl: "https://www.zakazanyovoce.cz",
+        illustration: "guitar",
+      },
+      {
+        id: "bio",
+        navLabel: "Bio",
+        icon: "bio",
+        eyebrow: "Bio",
+        title: "Stručně o muzice, která mě drží dlouhodobě.",
+        text: "Hudba je pro mě přirozené místo mezi energií kapely, prací se zvukem a hledáním vlastního výrazu. Nejvíc mě baví songy, které mají tah, emoci a poctivě zahraný základ.",
+        bullets: ["kytara", "songwriting", "studio", "produkce"],
+        imageUrl: null,
+        illustration: "portrait",
+        reverse: true,
+        tone: "surface",
+      },
+      {
+        id: "spotify",
+        navLabel: "Spotify",
+        icon: "spotify",
+        eyebrow: "Spotify",
+        title: "Poslech na Spotify.",
+        text: "Profil, nahrávky a aktuální hudební stopa na jednom místě.",
+        bullets: ["profil", "streaming", "hudba"],
+        imageUrl: null,
+        linkUrl: "https://open.spotify.com/artist/7j2wWAmjvEG0IQz7WEIcQf",
+        illustration: "spotify",
+      },
+      {
+        id: "videoklipy",
+        navLabel: "Videoklipy",
+        icon: "video",
+        eyebrow: "Videoklipy",
+        title: "Tři videoklipy v jednom přehledu.",
+        text: "Výběr klipů z YouTube. URL můžeš v administraci kdykoliv vyměnit.",
+        bullets: [
+          "https://www.youtube.com/watch?v=rbCGfRVWZBQ",
+          "https://www.youtube.com/watch?v=nBJnMTlIDj4",
+          "https://www.youtube.com/watch?v=lp2_G51ErIY",
+        ],
+        imageUrl: null,
+        illustration: "video",
+        tone: "surface",
+      },
+      {
+        id: "fotky",
+        navLabel: "Fotky",
+        icon: "photo",
+        eyebrow: "Fotky",
+        title: "Promo fotky a momenty s kytarou.",
+        text: "Malá galerie pro promo fotky, koncertní náladu nebo studiové momenty. V administraci můžeš nahrát až tři fotky přes Cloudinary.",
+        bullets: ["kytara", "promo", "studio"],
+        imageUrl: null,
+        galleryImageUrls: [],
+        illustration: "photos",
+      },
+    ],
+    references: {
+      eyebrow: "Rozcestník",
+      title: "Hudba na jednom místě.",
+      text: "Kapela má vlastní web, osobní profil zase vlastní poslech, klipy a kontakt.",
+      items: ["Zakázané ovoce", "Spotify", "YouTube", "Kontakt"],
+    },
+    cta: {
+      eyebrow: "Kontakt",
+      title: "Chceš se domluvit na koncertu, spolupráci nebo nahrávání?",
+      text: "Napiš přes kontaktní formulář. Vyber správný předmět a přidej pár vět k tomu, o co jde.",
+      buttonLabel: "Přejít na kontaktní formulář",
+    },
+  },
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -233,6 +326,10 @@ function normalizeContent(slug: LandingPageSlug, raw: unknown): LandingPageConte
       text: asString(hero.text, fallback.hero.text),
       primaryLabel: asString(hero.primaryLabel, fallback.hero.primaryLabel),
       secondaryLabel: asString(hero.secondaryLabel, fallback.hero.secondaryLabel),
+      imageUrl:
+        typeof hero.imageUrl === "string" && hero.imageUrl.trim()
+          ? hero.imageUrl.trim()
+          : (fallback.hero.imageUrl ?? null),
     },
     sections: fallback.sections.map((fallbackSection, index) => {
       const section = isObject(sections[index]) ? sections[index] : {};
@@ -246,6 +343,14 @@ function normalizeContent(slug: LandingPageSlug, raw: unknown): LandingPageConte
           typeof section.imageUrl === "string" && section.imageUrl.trim()
             ? section.imageUrl.trim()
             : null,
+        linkUrl:
+          typeof section.linkUrl === "string" && section.linkUrl.trim()
+            ? section.linkUrl.trim()
+            : (fallbackSection.linkUrl ?? null),
+        galleryImageUrls: asStringArray(
+          section.galleryImageUrls,
+          fallbackSection.galleryImageUrls ?? [],
+        ).slice(0, 3),
       };
     }),
     references: {

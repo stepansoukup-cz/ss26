@@ -10,7 +10,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const slugs: LandingPageSlug[] = ["webove-aplikace", "nahravani"];
+const slugs: LandingPageSlug[] = ["webove-aplikace", "nahravani", "hudba"];
 
 export default async function AdminLandingPagesPage() {
   const user = await getCurrentUser();

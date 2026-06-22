@@ -56,6 +56,7 @@ model User {
   articles   Article[]
   comments   Comment[]
   loginCodes LoginCode[]
+  passwordChangeCodes PasswordChangeCode[]
   sessions   Session[]
 }
 
@@ -90,6 +91,22 @@ model LoginCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PasswordChangeCode {
+  id                  String    @id @default(cuid())
+  userId              String
+  codeHash            String
+  pendingPasswordHash String
+  attempts            Int       @default(0)
+  expiresAt           DateTime
+  usedAt              DateTime?
+  createdAt           DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Session {

@@ -22,7 +22,7 @@ export const updateProfileSchema = z.object({
   lastName: z.string().trim(),
 });
 
-export const changePasswordSchema = z
+export const requestPasswordChangeCodeSchema = z
   .object({
     currentPassword: z.string().min(1, "Zadej současné heslo."),
     newPassword: z
@@ -34,3 +34,10 @@ export const changePasswordSchema = z
     message: "Nová hesla se neshodují.",
     path: ["confirmPassword"],
   });
+
+export const confirmPasswordChangeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Kód má 6 číslic."),
+});

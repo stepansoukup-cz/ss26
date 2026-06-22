@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/user";
+import { uploadImageToCloudinary } from "@/lib/cloudinary-upload";
 import {
   defaultLandingPages,
   landingPageLabels,
   type LandingPageContent,
   type LandingPageSlug,
 } from "@/lib/landing-pages";
+import { IMAGE_OPTIMIZE_PRESETS } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
+import { validateImageFile } from "@/lib/validations/media";
 import type { ActionState } from "@/app/admin/actions";
 
 function parseText(value: FormDataEntryValue | null, fallback: string) {
@@ -16,13 +19,13 @@ function parseText(value: FormDataEntryValue | null, fallback: string) {
   return text || fallback;
 }
 
-function parseOptionalUrl(value: FormDataEntryValue | null) {
+function parseOptionalUrl(value: FormDataEntryValue | null, label = "URL") {
   const text = typeof value === "string" ? value.trim() : "";
   if (!text) {
     return null;
   }
   if (!/^https?:\/\/.+/i.test(text)) {
-    throw new Error("URL obrázku musí začínat http:// nebo https://.");
+    throw new Error(`${label} musí začínat http:// nebo https://.`);
   }
   return text;
 }
@@ -38,6 +41,77 @@ function parseLines(value: FormDataEntryValue | null, fallback: string[]) {
   return lines.length ? lines : fallback;
 }
 
+function parseOptionalUrlLines(
+  value: FormDataEntryValue | null,
+  fallback: string[],
+  label: string,
+) {
+  const lines = parseLines(value, fallback);
+  for (const line of lines) {
+    if (!/^https?:\/\/.+/i.test(line)) {
+      throw new Error(`${label} musí obsahovat jen URL začínající http:// nebo https://.`);
+    }
+  }
+  return lines;
+}
+
+function optionalImageFile(formData: FormData, fieldName: string) {
+  const value = formData.get(fieldName);
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+  const error = validateImageFile(value);
+  if (error) {
+    throw new Error(error);
+  }
+  return value;
+}
+
+function optionalImageFiles(formData: FormData, fieldName: string) {
+  return formData
+    .getAll(fieldName)
+    .filter((value): value is File => value instanceof File && value.size > 0)
+    .map((file) => {
+      const error = validateImageFile(file);
+      if (error) {
+        throw new Error(error);
+      }
+      return file;
+    });
+}
+
+async function uploadOptionalImage(
+  formData: FormData,
+  fieldName: string,
+  folder: string,
+) {
+  const file = optionalImageFile(formData, fieldName);
+  if (!file) {
+    return null;
+  }
+
+  const uploaded = await uploadImageToCloudinary(file, folder, {
+    optimize: IMAGE_OPTIMIZE_PRESETS.gallery,
+  });
+  return uploaded.url;
+}
+
+async function uploadOptionalImages(
+  formData: FormData,
+  fieldName: string,
+  folder: string,
+) {
+  const files = optionalImageFiles(formData, fieldName).slice(0, 3);
+  const uploads = await Promise.all(
+    files.map((file) =>
+      uploadImageToCloudinary(file, folder, {
+        optimize: IMAGE_OPTIMIZE_PRESETS.gallery,
+      }),
+    ),
+  );
+  return uploads.map((upload) => upload.url);
+}
+
 function isLandingPageSlug(value: FormDataEntryValue | null): value is LandingPageSlug {
   return (
     typeof value === "string" &&
@@ -45,8 +119,16 @@ function isLandingPageSlug(value: FormDataEntryValue | null): value is LandingPa
   );
 }
 
-function buildContent(slug: LandingPageSlug, formData: FormData): LandingPageContent {
+async function buildContent(
+  slug: LandingPageSlug,
+  formData: FormData,
+): Promise<LandingPageContent> {
   const fallback = defaultLandingPages[slug];
+  const heroImageUpload = await uploadOptionalImage(
+    formData,
+    "hero.imageFile",
+    `ss26/landing-pages/${slug}/hero`,
+  );
 
   return {
     hero: {
@@ -61,21 +143,58 @@ function buildContent(slug: LandingPageSlug, formData: FormData): LandingPageCon
         formData.get("hero.secondaryLabel"),
         fallback.hero.secondaryLabel,
       ),
+      imageUrl:
+        heroImageUpload ??
+        parseOptionalUrl(formData.get("hero.imageUrl"), "URL promo fotky") ??
+        null,
     },
-    sections: fallback.sections.map((section, index) => ({
-      ...section,
-      eyebrow: parseText(
-        formData.get(`sections.${index}.eyebrow`),
-        section.eyebrow,
-      ),
-      title: parseText(formData.get(`sections.${index}.title`), section.title),
-      text: parseText(formData.get(`sections.${index}.text`), section.text),
-      bullets: parseLines(
-        formData.get(`sections.${index}.bullets`),
-        section.bullets,
-      ),
-      imageUrl: parseOptionalUrl(formData.get(`sections.${index}.imageUrl`)),
-    })),
+    sections: await Promise.all(
+      fallback.sections.map(async (section, index) => {
+        const sectionImageUpload = await uploadOptionalImage(
+          formData,
+          `sections.${index}.imageFile`,
+          `ss26/landing-pages/${slug}/${section.id}`,
+        );
+        const galleryUploads = await uploadOptionalImages(
+          formData,
+          `sections.${index}.galleryImageFiles`,
+          `ss26/landing-pages/${slug}/${section.id}/gallery`,
+        );
+        const galleryImageUrls = [
+          ...parseOptionalUrlLines(
+            formData.get(`sections.${index}.galleryImageUrls`),
+            section.galleryImageUrls ?? [],
+            "URL fotek",
+          ),
+          ...galleryUploads,
+        ].slice(0, 3);
+
+        return {
+          ...section,
+          eyebrow: parseText(
+            formData.get(`sections.${index}.eyebrow`),
+            section.eyebrow,
+          ),
+          title: parseText(formData.get(`sections.${index}.title`), section.title),
+          text: parseText(formData.get(`sections.${index}.text`), section.text),
+          bullets: parseLines(
+            formData.get(`sections.${index}.bullets`),
+            section.bullets,
+          ),
+          imageUrl:
+            sectionImageUpload ??
+            parseOptionalUrl(
+              formData.get(`sections.${index}.imageUrl`),
+              "URL obrázku",
+            ),
+          linkUrl: parseOptionalUrl(
+            formData.get(`sections.${index}.linkUrl`),
+            "URL odkazu / embed",
+          ),
+          galleryImageUrls,
+        };
+      }),
+    ),
     references: {
       eyebrow: parseText(
         formData.get("references.eyebrow"),
@@ -109,7 +228,7 @@ export async function updateLandingPageAction(
   }
 
   try {
-    const content = buildContent(slug, formData);
+    const content = await buildContent(slug, formData);
     await prisma.landingPageContent.upsert({
       where: { slug },
       create: { slug, content },

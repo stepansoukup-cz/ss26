@@ -11,6 +11,7 @@ export type SessionPayload = {
 };
 
 type SessionRow = {
+  id: string;
   userId: string;
   email: string;
   role: Role;
@@ -21,7 +22,7 @@ function createRawSessionToken() {
   return randomBytes(32).toString("base64url");
 }
 
-function hashSessionToken(token: string) {
+export function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
@@ -49,6 +50,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   try {
     const rows = await prisma.$queryRaw<SessionRow[]>`
       SELECT
+        "Session"."id",
         "Session"."userId",
         "User"."email",
         "User"."role",
@@ -142,4 +144,34 @@ export async function getSessionFromCookies(): Promise<SessionPayload | null> {
     return null;
   }
   return verifySessionToken(token);
+}
+
+export async function getCurrentSessionIdFromCookies() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    return null;
+  }
+
+  const rows = await prisma.$queryRaw<Array<{ id: string; expiresAt: Date }>>`
+    SELECT "id", "expiresAt"
+    FROM "Session"
+    WHERE "tokenHash" = ${hashSessionToken(token)}
+    LIMIT 1
+  `;
+  const session = rows[0];
+
+  if (!session) {
+    return null;
+  }
+
+  if (session.expiresAt <= new Date()) {
+    await prisma.$executeRaw`
+      DELETE FROM "Session"
+      WHERE "id" = ${session.id}
+    `;
+    return null;
+  }
+
+  return session.id;
 }

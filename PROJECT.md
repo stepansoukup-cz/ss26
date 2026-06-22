@@ -114,9 +114,9 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 
 `/hudba`
 
-- Sekce 1 (hned navrchu): „hlavně kytarista kapely **Zakázané ovoce**" + odkaz na web kapely.
-- Sekce 2: **sólová dráha** — bio, stručná historie kapely, embed YouTube klip, pár fotek, Spotify embed přehrávač.
-- Spíš stručné, vizuálně oddělené sekce.
+- Landing page ve stejném onepage stylu jako Programování a Studio.
+- Sekce: hero, **Zakázané ovoce** (jen rozcestník s odkazem na web kapely), bio, Spotify embed, tři YouTube videoklipy, galerie max. 3 fotek, CTA na kontakt.
+- Obsah je editovatelný v adminu v sekci Landing pages jako třetí záložka **Hudba**.
 
 `/programovani` a `/studio`
 
@@ -138,9 +138,9 @@ Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
 
 ### Autentizace a relace
 
-- Přihlášení používá **stateful session uložené v DB**. Cookie nese jen náhodný session token; v tabulce `Session` je uložený pouze jeho hash (`tokenHash`) plus `userId`, zařízení / user-agent, IP, `createdAt`, `lastSeenAt`, `expiresAt`. Umožňuje to trvalé přihlášení, budoucí vzdálené odhlášení konkrétního zařízení i všech relací a budoucí výpis aktivních přihlášení v adminu.
-- **Plán: 2FA při změně hesla** — vyžadovat (1) staré heslo a (2) jednorázový kód zaslaný na registrovaný e-mail přes Resend. Po úspěšné změně hesla nabídnout volitelné odhlášení všech ostatních relací.
-- Poznámka: web je osobní, bez citlivých dat třetích stran. Bezpečnostní model tomu má být úměrný, ale správa relací a 2FA u změny hesla zůstávají v plánu.
+- Přihlášení používá **stateful session uložené v DB**. Cookie nese jen náhodný session token; v tabulce `Session` je uložený pouze jeho hash (`tokenHash`) plus `userId`, zařízení / user-agent, IP, `createdAt`, `lastSeenAt`, `expiresAt`. Umožňuje to trvalé přihlášení, vzdálené odhlášení konkrétního zařízení i všech ostatních relací a výpis aktivních přihlášení v admin profilu.
+- **2FA při změně hesla** — vyžaduje (1) staré heslo a (2) jednorázový kód zaslaný na registrovaný e-mail přes Resend. Nové heslo se uloží až po ověření kódu; po úspěšné změně se ostatní relace odhlásí a aktuální relace zůstane.
+- Poznámka: web je osobní, bez citlivých dat třetích stran. Bezpečnostní model tomu má být úměrný, ale správa relací a 2FA u změny hesla zůstávají důležitou součástí administrace.
 
 ## 9. Datový model (databáze)
 
@@ -149,6 +149,7 @@ Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z
 **Enumy:** `Role` (ADMIN, EDITOR, FAN) · `CoverType` (IMAGE, VIDEO) · `ArticleStatus` (DRAFT, PUBLISHED) · `MediaType` (IMAGE, AUDIO, VIDEO) · `ContentBlockType` (GALLERY, AUDIO_PLAYER) · `CommentStatus` (PENDING, APPROVED, SPAM).
 
 - **User**: id, email (unikátní), name, passwordHash, role (default ADMIN), createdAt. Relace: articles (1:N), comments (1:N), sessions (1:N).
+- **PasswordChangeCode**: id, userId (FK→User, cascade delete), codeHash, pendingPasswordHash, attempts, expiresAt, usedAt?, createdAt. Slouží pro 2FA potvrzení změny hesla; nové heslo se do `User.passwordHash` uloží až po ověření kódu.
 - **Session**: id, userId (FK→User, cascade delete), tokenHash (unikátní hash náhodného tokenu z cookie), userAgent?, ip?, createdAt, lastSeenAt, expiresAt.
 - **Article**: id, slug (unikátní), title, perex (Text), **content (Text, nullable — Tiptap JSON)**, coverType (default IMAGE), coverImageUrl?, coverVideoUrl?, status (default DRAFT), publishedAt?, authorId (FK→User), createdAt, updatedAt. **Recenze** (volitelně): score_legacy?, score_practicality?, score_price?, score_sound?, score_look? (všechna Int 0–10, nullable). `score_overall` **není sloupec v DB** — počítá se za běhu z vyplněných kritérií. Relace: author, tags (přes ArticleTag), **contentBlocks** (1:N), media (1:N), comments (1:N), gear (přes ArticleGear, M:N — budoucí modul).
 - **ContentBlock**: id, articleId (FK→Article), type (`GALLERY` | `AUDIO_PLAYER`), createdAt. Relace: article, media (1:N). Blok odpovídá vloženému uzlu v JSON (`galleryBlock`, `audioPlayerBlock`) přes `blockId`.

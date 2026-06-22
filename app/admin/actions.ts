@@ -5,11 +5,17 @@ import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import {
   clearSessionCookie,
+  getCurrentSessionIdFromCookies,
   setSessionCookie,
 } from "@/lib/auth/session";
 import { createAndSendLoginCode, verifyLoginCode } from "@/lib/auth/login-code";
+import {
+  createAndSendPasswordChangeCode,
+  verifyPasswordChangeCode,
+} from "@/lib/auth/password-change-code";
 import { requireUser } from "@/lib/auth/user";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import {
   RATE_LIMIT_ERROR,
   buildRateLimitKey,
@@ -18,9 +24,10 @@ import {
   resetRateLimit,
 } from "@/lib/rate-limit";
 import {
-  changePasswordSchema,
+  confirmPasswordChangeSchema,
   loginWithCodeSchema,
   loginWithPasswordSchema,
+  requestPasswordChangeCodeSchema,
   requestLoginCodeSchema,
   updateProfileSchema,
 } from "@/lib/validations/auth";
@@ -29,12 +36,17 @@ export type ActionState = {
   error?: string;
   success?: string;
   redirectTo?: string;
+  passwordChangeCodeSent?: boolean;
 };
 
 const ADMIN_ROLES: Role[] = [Role.ADMIN, Role.EDITOR];
 const LOGIN_RATE_LIMIT = {
   maxAttempts: 8,
   windowMs: 10 * 60 * 1000,
+};
+const PASSWORD_CHANGE_CODE_RATE_LIMIT = {
+  maxAttempts: 3,
+  windowMs: 15 * 60 * 1000,
 };
 
 function formatZodError(error: { issues: { message: string }[] }) {
@@ -227,6 +239,47 @@ export async function logoutAction() {
   redirect("/admin/prihlaseni");
 }
 
+export async function revokeSessionAction(formData: FormData) {
+  const user = await requireUser();
+  const currentSessionId = await getCurrentSessionIdFromCookies();
+  const sessionId = formData.get("sessionId");
+
+  if (typeof sessionId !== "string" || !sessionId) {
+    return;
+  }
+
+  if (sessionId === currentSessionId) {
+    return;
+  }
+
+  await prisma.session.deleteMany({
+    where: {
+      id: sessionId,
+      userId: user.id,
+    },
+  });
+
+  revalidatePath("/admin/profil");
+}
+
+export async function revokeOtherSessionsAction() {
+  const user = await requireUser();
+  const currentSessionId = await getCurrentSessionIdFromCookies();
+
+  if (!currentSessionId) {
+    return;
+  }
+
+  await prisma.session.deleteMany({
+    where: {
+      userId: user.id,
+      id: { not: currentSessionId },
+    },
+  });
+
+  revalidatePath("/admin/profil");
+}
+
 export async function updateProfileAction(
   _prevState: ActionState,
   formData: FormData,
@@ -259,7 +312,7 @@ export async function changePasswordAction(
 ): Promise<ActionState> {
   const user = await requireUser();
 
-  const parsed = changePasswordSchema.safeParse({
+  const parsed = requestPasswordChangeCodeSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     newPassword: formData.get("newPassword"),
     confirmPassword: formData.get("confirmPassword"),
@@ -283,11 +336,94 @@ export async function changePasswordAction(
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  const rateLimitKey = await buildRateLimitKey(`password-change:${user.id}`);
+  if (
+    await isRateLimited({
+      key: rateLimitKey,
+      maxAttempts: PASSWORD_CHANGE_CODE_RATE_LIMIT.maxAttempts,
+    })
+  ) {
+    return { error: RATE_LIMIT_ERROR };
+  }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash },
+  const blocked = await recordRateLimitAttempt({
+    key: rateLimitKey,
+    ...PASSWORD_CHANGE_CODE_RATE_LIMIT,
+  });
+  if (blocked) {
+    return { error: RATE_LIMIT_ERROR };
+  }
+
+  try {
+    await createAndSendPasswordChangeCode({
+      userId: user.id,
+      email: user.email,
+      pendingPasswordHash: passwordHash,
+    });
+  } catch {
+    return {
+      error:
+        "Kód se nepodařilo odeslat. Zkontroluj nastavení Resend v .env.local.",
+    };
+  }
+
+  return {
+    success:
+      "Staré heslo sedí. Na registrovaný e-mail jsme poslali potvrzovací kód.",
+    passwordChangeCodeSent: true,
+  };
+}
+
+export async function confirmPasswordChangeAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = confirmPasswordChangeSchema.safeParse({
+    code: formData.get("code"),
   });
 
-  return { success: "Heslo bylo změněno." };
+  if (!parsed.success) {
+    return {
+      error: formatZodError(parsed.error),
+      passwordChangeCodeSent: true,
+    };
+  }
+
+  const result = await verifyPasswordChangeCode({
+    userId: user.id,
+    code: parsed.data.code,
+  });
+
+  if (!result.ok) {
+    return {
+      error: result.error,
+      passwordChangeCodeSent: true,
+    };
+  }
+
+  const currentSessionId = await getCurrentSessionIdFromCookies();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash: result.pendingPasswordHash },
+    });
+
+    if (currentSessionId) {
+      await tx.session.deleteMany({
+        where: {
+          userId: user.id,
+          id: { not: currentSessionId },
+        },
+      });
+    }
+  });
+
+  revalidatePath("/admin/profil");
+
+  return {
+    success:
+      "Heslo bylo změněno. Ostatní zařízení byla z bezpečnostních důvodů odhlášena.",
+  };
 }
