@@ -1,6 +1,7 @@
+import { createHash, randomBytes } from "node:crypto";
 import { Role } from "@prisma/client";
-import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from "./constants";
 
 export type SessionPayload = {
@@ -9,53 +10,106 @@ export type SessionPayload = {
   role: Role;
 };
 
-function getSessionSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error(
-      "SESSION_SECRET musí být nastaven v .env.local (min. 32 znaků).",
-    );
-  }
-  return new TextEncoder().encode(secret);
+type SessionRow = {
+  userId: string;
+  email: string;
+  role: Role;
+  expiresAt: Date;
+};
+
+function createRawSessionToken() {
+  return randomBytes(32).toString("base64url");
 }
 
-export async function createSessionToken(payload: SessionPayload) {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
-    .sign(getSessionSecret());
+function hashSessionToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
-export async function verifySessionToken(
-  token: string,
-): Promise<SessionPayload | null> {
+function firstHeaderIp(value: string | null) {
+  return value?.split(",")[0]?.trim() || null;
+}
+
+async function getRequestMeta() {
+  const headerList = await headers();
+
+  return {
+    userAgent: headerList.get("user-agent"),
+    ip:
+      firstHeaderIp(headerList.get("x-forwarded-for")) ??
+      firstHeaderIp(headerList.get("x-real-ip")) ??
+      firstHeaderIp(headerList.get("cf-connecting-ip")) ??
+      null,
+  };
+}
+
+export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+  const tokenHash = hashSessionToken(token);
+  const now = new Date();
+
   try {
-    const { payload } = await jwtVerify(token, getSessionSecret());
-    const userId = payload.userId;
-    const email = payload.email;
-    const role = payload.role;
+    const rows = await prisma.$queryRaw<SessionRow[]>`
+      SELECT
+        "Session"."userId",
+        "User"."email",
+        "User"."role",
+        "Session"."expiresAt"
+      FROM "Session"
+      INNER JOIN "User" ON "User"."id" = "Session"."userId"
+      WHERE "Session"."tokenHash" = ${tokenHash}
+      LIMIT 1
+    `;
+    const session = rows[0];
 
-    if (
-      typeof userId !== "string" ||
-      typeof email !== "string" ||
-      typeof role !== "string"
-    ) {
+    if (!session) {
       return null;
     }
 
-    if (!Object.values(Role).includes(role as Role)) {
+    if (session.expiresAt <= now) {
+      await prisma.$executeRaw`
+        DELETE FROM "Session"
+        WHERE "tokenHash" = ${tokenHash}
+      `;
       return null;
     }
 
-    return { userId, email, role: role as Role };
+    if (!Object.values(Role).includes(session.role)) {
+      return null;
+    }
+
+    await prisma.$executeRaw`
+      UPDATE "Session"
+      SET "lastSeenAt" = ${now}
+      WHERE "tokenHash" = ${tokenHash}
+    `;
+
+    return {
+      userId: session.userId,
+      email: session.email,
+      role: session.role,
+    };
   } catch {
     return null;
   }
 }
 
 export async function setSessionCookie(payload: SessionPayload) {
-  const token = await createSessionToken(payload);
+  const token = createRawSessionToken();
+  const tokenHash = hashSessionToken(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_MAX_AGE_SECONDS * 1000);
+  const { userAgent, ip } = await getRequestMeta();
+
+  await prisma.session.create({
+    data: {
+      userId: payload.userId,
+      tokenHash,
+      userAgent,
+      ip,
+      lastSeenAt: now,
+      expiresAt,
+    },
+  });
+
   const cookieStore = await cookies();
 
   cookieStore.set(SESSION_COOKIE, token, {
@@ -69,6 +123,15 @@ export async function setSessionCookie(payload: SessionPayload) {
 
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (token) {
+    await prisma.$executeRaw`
+      DELETE FROM "Session"
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+    `;
+  }
+
   cookieStore.delete(SESSION_COOKIE);
 }
 

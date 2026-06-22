@@ -136,10 +136,10 @@ Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
 - Komentáře — moderace (schválit / spam / smazat).
 - Zprávy z formuláře — čtení, označení přečteno.
 
-### Plánovaná změna autentizace
+### Autentizace a relace
 
-- Přejít ze stateless JWT session na **stateful session uložené v DB**. Cookie ponese jen `sessionId`; tabulka `Session` bude obsahovat `userId`, zařízení / user-agent, IP, `createdAt`, `lastSeenAt`, `expiresAt`. Umožní to trvalé přihlášení, vzdálené odhlášení konkrétního zařízení i všech relací a výpis aktivních přihlášení v adminu.
-- **2FA při změně hesla:** vyžadovat (1) staré heslo a (2) jednorázový kód zaslaný na registrovaný e-mail přes Resend. Po úspěšné změně hesla nabídnout volitelné odhlášení všech ostatních relací.
+- Přihlášení používá **stateful session uložené v DB**. Cookie nese jen náhodný session token; v tabulce `Session` je uložený pouze jeho hash (`tokenHash`) plus `userId`, zařízení / user-agent, IP, `createdAt`, `lastSeenAt`, `expiresAt`. Umožňuje to trvalé přihlášení, budoucí vzdálené odhlášení konkrétního zařízení i všech relací a budoucí výpis aktivních přihlášení v adminu.
+- **Plán: 2FA při změně hesla** — vyžadovat (1) staré heslo a (2) jednorázový kód zaslaný na registrovaný e-mail přes Resend. Po úspěšné změně hesla nabídnout volitelné odhlášení všech ostatních relací.
 - Poznámka: web je osobní, bez citlivých dat třetích stran. Bezpečnostní model tomu má být úměrný, ale správa relací a 2FA u změny hesla zůstávají v plánu.
 
 ## 9. Datový model (databáze)
@@ -148,7 +148,8 @@ Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z
 
 **Enumy:** `Role` (ADMIN, EDITOR, FAN) · `CoverType` (IMAGE, VIDEO) · `ArticleStatus` (DRAFT, PUBLISHED) · `MediaType` (IMAGE, AUDIO, VIDEO) · `ContentBlockType` (GALLERY, AUDIO_PLAYER) · `CommentStatus` (PENDING, APPROVED, SPAM).
 
-- **User**: id, email (unikátní), name, passwordHash, role (default ADMIN), createdAt. Relace: articles (1:N), comments (1:N).
+- **User**: id, email (unikátní), name, passwordHash, role (default ADMIN), createdAt. Relace: articles (1:N), comments (1:N), sessions (1:N).
+- **Session**: id, userId (FK→User, cascade delete), tokenHash (unikátní hash náhodného tokenu z cookie), userAgent?, ip?, createdAt, lastSeenAt, expiresAt.
 - **Article**: id, slug (unikátní), title, perex (Text), **content (Text, nullable — Tiptap JSON)**, coverType (default IMAGE), coverImageUrl?, coverVideoUrl?, status (default DRAFT), publishedAt?, authorId (FK→User), createdAt, updatedAt. **Recenze** (volitelně): score_legacy?, score_practicality?, score_price?, score_sound?, score_look? (všechna Int 0–10, nullable). `score_overall` **není sloupec v DB** — počítá se za běhu z vyplněných kritérií. Relace: author, tags (přes ArticleTag), **contentBlocks** (1:N), media (1:N), comments (1:N), gear (přes ArticleGear, M:N — budoucí modul).
 - **ContentBlock**: id, articleId (FK→Article), type (`GALLERY` | `AUDIO_PLAYER`), createdAt. Relace: article, media (1:N). Blok odpovídá vloženému uzlu v JSON (`galleryBlock`, `audioPlayerBlock`) přes `blockId`.
 - **Tag**: id, name, slug (unikátní). Relace: articles (přes ArticleTag).

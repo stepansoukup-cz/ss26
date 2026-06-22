@@ -27,7 +27,6 @@ All `db:*` and `cloudinary:*` scripts require `.env.local` (loaded by `dotenv-cl
 |---|---|
 | `DATABASE_URL` | Pooled PostgreSQL URL (Neon) |
 | `DATABASE_URL_UNPOOLED` | Direct URL for migrations |
-| `SESSION_SECRET` | JWT signing secret, min 32 chars |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary account |
 | `CLOUDINARY_API_KEY` | Cloudinary account |
 | `CLOUDINARY_API_SECRET` | Cloudinary account |
@@ -37,9 +36,9 @@ All `db:*` and `cloudinary:*` scripts require `.env.local` (loaded by `dotenv-cl
 
 **Public site** (`/`, `/blog/[slug]`, `/webove-aplikace`, `/nahravani`, `/kontakt`) — server-rendered pages with no client auth.
 
-**Admin CMS** (`/admin/*`) — all pages are protected. Auth is checked per-page by calling `requireUser()` from `lib/auth/user.ts`. There is no middleware-level redirect; each server component or action calls `requireUser()` directly.
+**Admin CMS** (`/admin/*`) — all pages are protected. `proxy.ts` redirects unauthenticated admin requests, and server pages/actions still verify auth through `getCurrentUser()` / `requireUser()` from `lib/auth/user.ts`.
 
-**Authentication flow**: bcrypt password + JWT session stored in an HTTP-only cookie (`lib/auth/session.ts`). Login codes (15-min OTP sent via Resend) are also supported. Only users with role `ADMIN` or `EDITOR` can access admin.
+**Authentication flow**: bcrypt password + stateful DB session (`Session`) stored as a hashed token in DB; the HTTP-only cookie contains only the raw random session token (`lib/auth/session.ts`). Login codes (15-min OTP sent via Resend) are also supported. Only users with role `ADMIN` or `EDITOR` can access admin.
 
 **Server Actions**: all mutations use Next.js Server Actions. Action files are colocated at `app/*/actions.ts` or `app/*/[route]-actions.ts`. The shared return type is `ActionState = { error?: string; success?: string; redirectTo?: string }` (defined in `app/admin/actions.ts`). Forms use `useActionState`.
 

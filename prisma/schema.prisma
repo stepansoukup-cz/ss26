@@ -56,6 +56,7 @@ model User {
   articles   Article[]
   comments   Comment[]
   loginCodes LoginCode[]
+  sessions   Session[]
 }
 
 model SiteSettings {
@@ -89,6 +90,22 @@ model LoginCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String   @unique
+  userAgent   String?
+  ip          String?
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  expiresAt   DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model RateLimit {
