@@ -7,6 +7,8 @@ import {
   type ImageOptimizePreset,
 } from "@/lib/image-upload";
 import { maxAudioUploadErrorMessage } from "@/lib/audio-upload";
+import { checkImageMagicBytes } from "@/lib/validations/media";
+import { checkAudioMagicBytes } from "@/lib/validations/audio";
 
 export type CloudinaryResourceType = "image" | "video" | "raw";
 
@@ -92,6 +94,12 @@ export async function uploadImageToCloudinary(
 ) {
   ensureCloudinaryConfig();
 
+  const headerBytes = Buffer.from(await file.slice(0, 4100).arrayBuffer());
+  const magicError = await checkImageMagicBytes(headerBytes);
+  if (magicError) {
+    throw new Error(magicError);
+  }
+
   const optimizePreset = options.optimize ?? IMAGE_OPTIMIZE_PRESETS.cover;
   const optimized = await optimizeImageFile(file, optimizePreset);
 
@@ -165,6 +173,12 @@ export async function uploadAudioToCloudinary(file: File, folder: string) {
   ensureCloudinaryConfig();
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  const magicError = await checkAudioMagicBytes(buffer.slice(0, 4100));
+  if (magicError) {
+    throw new Error(magicError);
+  }
+
   const mimeType =
     file.type && file.type.startsWith("audio/") ? file.type : "audio/mpeg";
   const dataUri = `data:${mimeType};base64,${buffer.toString("base64")}`;

@@ -54,6 +54,17 @@ export function getAudioFileFromFormData(formData: FormData, fieldName = "file")
   return { file: value };
 }
 
+const ALLOWED_AUDIO_EXTS = new Set(["mp3", "wav"]);
+
+export async function checkAudioMagicBytes(buffer: Buffer): Promise<string | null> {
+  const { fileTypeFromBuffer } = await import("file-type");
+  const type = await fileTypeFromBuffer(buffer);
+  if (!type || !ALLOWED_AUDIO_EXTS.has(type.ext)) {
+    return "Soubor není platný audio soubor. Povolené formáty: MP3, WAV.";
+  }
+  return null;
+}
+
 export function sanitizeAudioCaption(raw: string) {
   return raw.replace(/\s+/g, " ").trim().slice(0, 200);
 }

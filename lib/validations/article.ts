@@ -5,7 +5,7 @@ import { reviewScoresFormSchema } from "@/lib/validations/review-score";
 export const articleFormSchema = z
   .object({
     id: z.string().optional(),
-    title: z.string().trim().min(1, "Titulek je povinný."),
+    title: z.string().trim().min(1, "Titulek je povinný.").max(300, "Titulek může mít nejvýše 300 znaků."),
     slug: z
       .string()
       .trim()
@@ -15,8 +15,8 @@ export const articleFormSchema = z
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
         "Slug smí obsahovat jen malá písmena, čísla a pomlčky.",
       ),
-    perex: z.string().trim().min(1, "Perex je povinný."),
-    content: z.string(),
+    perex: z.string().trim().min(1, "Perex je povinný.").max(2000, "Perex může mít nejvýše 2 000 znaků."),
+    content: z.string().max(500_000, "Obsah článku je příliš dlouhý."),
     coverType: z.nativeEnum(CoverType),
     coverImageUrl: z.string().trim(),
     coverVideoUrl: z.string().trim(),
@@ -37,12 +37,35 @@ export const articleFormSchema = z
     }
 
     if (data.coverType === CoverType.VIDEO && data.coverVideoUrl) {
+      let parsed: URL;
       try {
-        new URL(data.coverVideoUrl);
+        parsed = new URL(data.coverVideoUrl);
       } catch {
         ctx.addIssue({
           code: "custom",
           message: "URL cover videa není platná.",
+          path: ["coverVideoUrl"],
+        });
+        return;
+      }
+
+      if (parsed.protocol !== "https:") {
+        ctx.addIssue({
+          code: "custom",
+          message: "URL cover videa musí začínat https://.",
+          path: ["coverVideoUrl"],
+        });
+        return;
+      }
+
+      const allowedHosts = ["youtube.com", "youtu.be", "vimeo.com", "cloudinary.com"];
+      const hostOk = allowedHosts.some(
+        (h) => parsed.hostname === h || parsed.hostname.endsWith("." + h),
+      );
+      if (!hostOk) {
+        ctx.addIssue({
+          code: "custom",
+          message: "URL cover videa musí být z YouTube, Vimeo nebo Cloudinary.",
           path: ["coverVideoUrl"],
         });
       }

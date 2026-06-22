@@ -28,7 +28,7 @@ export const adminNavSections: AdminNavSection[] = [
   {
     title: "Systém",
     items: [
-      // { href: "/admin/zpravy", label: "Zprávy z formuláře", icon: "messages", matchPrefix: true },
+      { href: "/admin/zpravy", label: "Zprávy z formuláře", icon: "messages", matchPrefix: true },
       { href: "/admin/nastaveni-webu", label: "Nastavení webu", icon: "settings" },
       { href: "/admin/profil", label: "Můj profil", icon: "profile" },
     ],

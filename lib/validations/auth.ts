@@ -27,7 +27,7 @@ export const changePasswordSchema = z
     currentPassword: z.string().min(1, "Zadej současné heslo."),
     newPassword: z
       .string()
-      .min(8, "Nové heslo musí mít alespoň 8 znaků."),
+      .min(12, "Nové heslo musí mít alespoň 12 znaků."),
     confirmPassword: z.string().min(1, "Potvrď nové heslo."),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {

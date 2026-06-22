@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { updateLandingPageAction } from "@/app/admin/landing-pages/actions";
 import type { ActionState } from "@/app/admin/actions";
 import {
@@ -266,11 +266,53 @@ function LandingPageForm({
 }
 
 export function LandingPagesPanel({ pages }: LandingPagesPanelProps) {
+  const [activeSlug, setActiveSlug] = useState<LandingPageSlug>(
+    pages[0]?.slug ?? "webove-aplikace",
+  );
+  const activePage = pages.find((page) => page.slug === activeSlug) ?? pages[0];
+
+  if (!activePage) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
-      {pages.map((page) => (
-        <LandingPageForm key={page.slug} {...page} />
-      ))}
+      <div className="rounded-admin-lg border border-admin-border bg-admin-surface p-1.5">
+        <div
+          role="tablist"
+          aria-label="Výběr landing page"
+          className="flex flex-wrap gap-1.5"
+        >
+          {pages.map((page) => {
+            const active = page.slug === activeSlug;
+            return (
+              <button
+                key={page.slug}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`landing-page-panel-${page.slug}`}
+                onClick={() => setActiveSlug(page.slug)}
+                className={`rounded-admin-md px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-accent/30 ${
+                  active
+                    ? "bg-admin-accent-muted text-admin-accent"
+                    : "text-admin-muted hover:bg-admin-surface-muted hover:text-admin-text"
+                }`}
+              >
+                {page.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        id={`landing-page-panel-${activePage.slug}`}
+        role="tabpanel"
+        aria-label={activePage.label}
+      >
+        <LandingPageForm key={activePage.slug} {...activePage} />
+      </div>
     </div>
   );
 }

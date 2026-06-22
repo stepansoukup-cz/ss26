@@ -11,6 +11,13 @@ import { createAndSendLoginCode, verifyLoginCode } from "@/lib/auth/login-code";
 import { requireUser } from "@/lib/auth/user";
 import { prisma } from "@/lib/prisma";
 import {
+  RATE_LIMIT_ERROR,
+  buildRateLimitKey,
+  isRateLimited,
+  recordRateLimitAttempt,
+  resetRateLimit,
+} from "@/lib/rate-limit";
+import {
   changePasswordSchema,
   loginWithCodeSchema,
   loginWithPasswordSchema,
@@ -25,6 +32,10 @@ export type ActionState = {
 };
 
 const ADMIN_ROLES: Role[] = [Role.ADMIN, Role.EDITOR];
+const LOGIN_RATE_LIMIT = {
+  maxAttempts: 8,
+  windowMs: 10 * 60 * 1000,
+};
 
 function formatZodError(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Neplatná data.";
@@ -81,14 +92,38 @@ export async function loginWithPasswordAction(
     }
 
     const { email, password } = parsed.data;
+    const rateLimitKey = await buildRateLimitKey("login");
+    if (
+      await isRateLimited({
+        key: rateLimitKey,
+        maxAttempts: LOGIN_RATE_LIMIT.maxAttempts,
+      })
+    ) {
+      return { error: RATE_LIMIT_ERROR };
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
+      const blocked = await recordRateLimitAttempt({
+        key: rateLimitKey,
+        ...LOGIN_RATE_LIMIT,
+      });
+      if (blocked) {
+        return { error: RATE_LIMIT_ERROR };
+      }
       return { error: "Nesprávný e-mail nebo heslo." };
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
+      const blocked = await recordRateLimitAttempt({
+        key: rateLimitKey,
+        ...LOGIN_RATE_LIMIT,
+      });
+      if (blocked) {
+        return { error: RATE_LIMIT_ERROR };
+      }
       return { error: "Nesprávný e-mail nebo heslo." };
     }
 
@@ -96,6 +131,8 @@ export async function loginWithPasswordAction(
     if (result.error) {
       return result;
     }
+
+    await resetRateLimit(rateLimitKey);
 
     return {
       success: result.success,
@@ -120,8 +157,25 @@ export async function loginWithCodeAction(
       return { error: formatZodError(parsed.error) };
     }
 
+    const rateLimitKey = await buildRateLimitKey("login");
+    if (
+      await isRateLimited({
+        key: rateLimitKey,
+        maxAttempts: LOGIN_RATE_LIMIT.maxAttempts,
+      })
+    ) {
+      return { error: RATE_LIMIT_ERROR };
+    }
+
     const user = await verifyLoginCode(parsed.data.email, parsed.data.code);
     if (!user) {
+      const blocked = await recordRateLimitAttempt({
+        key: rateLimitKey,
+        ...LOGIN_RATE_LIMIT,
+      });
+      if (blocked) {
+        return { error: RATE_LIMIT_ERROR };
+      }
       return { error: "Neplatný nebo expirovaný kód." };
     }
 
@@ -129,6 +183,8 @@ export async function loginWithCodeAction(
     if (result.error) {
       return result;
     }
+
+    await resetRateLimit(rateLimitKey);
 
     return {
       success: result.success,

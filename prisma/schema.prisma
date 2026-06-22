@@ -91,6 +91,16 @@ model LoginCode {
   @@index([userId])
 }
 
+model RateLimit {
+  key         String   @id
+  attempts    Int      @default(0)
+  windowStart DateTime @default(now())
+  expiresAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
 model Article {
   id            String        @id @default(cuid())
   slug          String        @unique
@@ -184,11 +194,16 @@ model Comment {
 }
 
 model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  subject   String?
-  body      String   @db.Text
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  name        String
+  email       String
+  subject     String?
+  body        String    @db.Text
+  read        Boolean   @default(false)
+  emailSentAt DateTime?
+  emailError  String?   @db.Text
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([read])
 }

@@ -136,6 +136,12 @@ Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
 - Komentáře — moderace (schválit / spam / smazat).
 - Zprávy z formuláře — čtení, označení přečteno.
 
+### Plánovaná změna autentizace
+
+- Přejít ze stateless JWT session na **stateful session uložené v DB**. Cookie ponese jen `sessionId`; tabulka `Session` bude obsahovat `userId`, zařízení / user-agent, IP, `createdAt`, `lastSeenAt`, `expiresAt`. Umožní to trvalé přihlášení, vzdálené odhlášení konkrétního zařízení i všech relací a výpis aktivních přihlášení v adminu.
+- **2FA při změně hesla:** vyžadovat (1) staré heslo a (2) jednorázový kód zaslaný na registrovaný e-mail přes Resend. Po úspěšné změně hesla nabídnout volitelné odhlášení všech ostatních relací.
+- Poznámka: web je osobní, bez citlivých dat třetích stran. Bezpečnostní model tomu má být úměrný, ale správa relací a 2FA u změny hesla zůstávají v plánu.
+
 ## 9. Datový model (databáze)
 
 Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z `@/lib/prisma`.

@@ -65,7 +65,7 @@ export function ImageUploadForm({
           <input
             type="file"
             name="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp"
             required={!currentUrl}
             className={fileInputClassName}
           />

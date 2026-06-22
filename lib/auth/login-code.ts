@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 
@@ -5,9 +6,7 @@ const CODE_LENGTH = 6;
 const CODE_TTL_MINUTES = 15;
 
 function generateNumericCode() {
-  const max = 10 ** CODE_LENGTH;
-  const value = Math.floor(Math.random() * max);
-  return value.toString().padStart(CODE_LENGTH, "0");
+  return randomInt(0, 10 ** CODE_LENGTH).toString().padStart(CODE_LENGTH, "0");
 }
 
 export async function createAndSendLoginCode(email: string) {
