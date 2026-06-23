@@ -29,7 +29,7 @@ export async function getGigFormOptions() {
     gearOptions: gear.map((item) => ({
       id: item.id,
       label: `${item.brand} ${item.model}`,
-      category: item.category.name,
+      category: item.category?.name ?? "Bez kategorie",
       boughtAt: item.boughtAt?.toISOString() ?? null,
       soldAt: item.soldAt?.toISOString() ?? null,
       childCount: item.containedGear.length,

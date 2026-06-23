@@ -42,7 +42,7 @@ export default async function GearDetailPage({
         <Link href="/gear" className="text-sm text-graphite-muted hover:text-white">← Zpět na gear</Link>
         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-graphite-accent">{gear.category.name}</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-graphite-accent">{gear.category?.name ?? "Bez kategorie"}</p>
             <h1 className="mt-4 text-4xl font-medium tracking-tight sm:text-6xl">{gear.brand} {gear.model}</h1>
             {gear.note ? <p className="mt-6 text-lg leading-8 text-graphite-muted">{gear.note}</p> : null}
             <div className="mt-8 flex flex-wrap gap-2 text-sm text-graphite-muted">
@@ -78,7 +78,7 @@ export default async function GearDetailPage({
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {gear.containedGear.map((child) => (
                 <Link key={child.id} href={`/gear/${child.id}`} className="rounded-[1rem] border border-graphite-border bg-graphite-surface p-4 hover:border-graphite-accent">
-                  <p className="text-sm text-graphite-accent">{child.category.name}</p>
+                  <p className="text-sm text-graphite-accent">{child.category?.name ?? "Bez kategorie"}</p>
                   <h3 className="mt-1 font-medium text-white">{child.brand} {child.model}</h3>
                 </Link>
               ))}

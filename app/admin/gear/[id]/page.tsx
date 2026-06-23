@@ -63,7 +63,7 @@ export default async function EditGearPage({
           id: gear.id,
           brand: gear.brand,
           model: gear.model,
-          categoryId: gear.categoryId,
+          categoryId: gear.categoryId ?? "",
           note: gear.note ?? "",
           boughtAt: dateInputValue(gear.boughtAt),
           soldAt: dateInputValue(gear.soldAt),
