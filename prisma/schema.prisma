@@ -187,7 +187,7 @@ model Gear {
   id                 String   @id @default(cuid())
   brand              String
   model              String
-  categoryId         String
+  categoryId         String?
   note               String?  @db.Text
   boughtAt           DateTime?
   soldAt             DateTime?
@@ -202,7 +202,7 @@ model Gear {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  category       Category         @relation(fields: [categoryId], references: [id])
+  category       Category?        @relation(fields: [categoryId], references: [id])
   container      Gear?            @relation("GearContainer", fields: [containerId], references: [id], onDelete: SetNull)
   containedGear  Gear[]           @relation("GearContainer")
   sameModelGroup GearGroup?       @relation(fields: [sameModelGroupId], references: [id], onDelete: SetNull)

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "dotenv -e .env.local -- prisma generate && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,6 +11,7 @@
     "db:push": "dotenv -e .env.local -- prisma db push",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:seed": "dotenv -e .env.local -- prisma db seed",
+    "db:import-old": "dotenv -e .env.local -- tsx prisma/import-old-data.ts",
     "db:seed-articles": "dotenv -e .env.local -- tsx prisma/seed-articles.ts",
     "cloudinary:ping": "dotenv -e .env.local -- tsx scripts/test-cloudinary-ping.ts"
   },
@@ -24,6 +25,7 @@
     "@tiptap/starter-kit": "^3.26.1",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.0",
+    "csv-parse": "^7.0.0",
     "file-type": "^22.0.1",
     "jose": "^6.2.3",
     "next": "16.2.9",
