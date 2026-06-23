@@ -162,6 +162,126 @@ model Article {
   contentBlocks ContentBlock[]
   media       Media[]
   comments    Comment[]
+  gearLinks   ArticleGear[]
+}
+
+model Category {
+  id       String @id @default(cuid())
+  name     String
+  slug     String @unique
+  position Int    @default(0)
+
+  gear Gear[]
+}
+
+model GearGroup {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Gear[]
+}
+
+model Gear {
+  id                 String   @id @default(cuid())
+  brand              String
+  model              String
+  categoryId         String
+  note               String?  @db.Text
+  boughtAt           DateTime?
+  soldAt             DateTime?
+  inDrawer           Boolean  @default(false)
+  purchaseUrl        String?
+  eshopUrl           String?
+  listingUrl         String?
+  coverImageUrl      String?
+  coverImagePublicId String?
+  containerId        String?
+  sameModelGroupId   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  category       Category         @relation(fields: [categoryId], references: [id])
+  container      Gear?            @relation("GearContainer", fields: [containerId], references: [id], onDelete: SetNull)
+  containedGear  Gear[]           @relation("GearContainer")
+  sameModelGroup GearGroup?       @relation(fields: [sameModelGroupId], references: [id], onDelete: SetNull)
+  privateInfo    GearPrivateInfo?
+  gigs           GearOnGig[]
+  articleLinks   ArticleGear[]
+
+  @@index([categoryId])
+  @@index([containerId])
+  @@index([sameModelGroupId])
+}
+
+model GearPrivateInfo {
+  gearId        String  @id
+  serial        String?
+  purchasePrice Decimal? @db.Decimal(12, 2)
+  sellPrice     Decimal? @db.Decimal(12, 2)
+  sellerName    String?
+  sellerPhone   String?
+  sellerEmail   String?
+  sellerCity    String?
+  sellerFb      String?
+  buyerName     String?
+  buyerPhone    String?
+  buyerEmail    String?
+  buyerAddress  String?
+  buyerFb       String?
+
+  gear Gear @relation(fields: [gearId], references: [id], onDelete: Cascade)
+}
+
+model ArticleGear {
+  articleId String
+  gearId    String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  gear    Gear    @relation(fields: [gearId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, gearId])
+  @@unique([gearId])
+}
+
+model Band {
+  id   String @id @default(cuid())
+  name String @unique
+
+  gigs Gig[]
+}
+
+model Gig {
+  id           String   @id @default(cuid())
+  date         DateTime
+  city         String
+  place        String?
+  name         String?
+  bandId       String
+  note         String?  @db.Text
+  photosUrl    String?
+  recordingUrl String?
+  youtubeUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  band Band        @relation(fields: [bandId], references: [id])
+  gear GearOnGig[]
+
+  @@index([date])
+  @@index([bandId])
+}
+
+model GearOnGig {
+  gearId String
+  gigId  String
+
+  gear Gear @relation(fields: [gearId], references: [id], onDelete: Cascade)
+  gig  Gig  @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  @@id([gearId, gigId])
+  @@index([gigId])
 }
 
 model Tag {

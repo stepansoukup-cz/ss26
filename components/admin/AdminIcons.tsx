@@ -24,6 +24,10 @@ export function AdminNavIcon({
       return <IconMessages className={className} />;
     case "pages":
       return <IconPages className={className} />;
+    case "gear":
+      return <IconGear className={className} />;
+    case "gigs":
+      return <IconGigs className={className} />;
     default:
       return <IconDot className={className} />;
   }
@@ -117,6 +121,24 @@ function IconPages({ className }: IconProps) {
       <rect x="2.5" y="3" width="11" height="10" rx="1.25" stroke="currentColor" strokeWidth="1.25" />
       <path d="M2.5 5.75h11" stroke="currentColor" strokeWidth="1.25" />
       <path d="M5 8.5h6M5 10.75h3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconGear({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M8 1.8v2M8 12.2v2M2.6 4.9l1.7 1M11.7 10.1l1.7 1M2.6 11.1l1.7-1M11.7 5.9l1.7-1" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconGigs({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M5 2.5v11M10.5 2.5v8.2a2 2 0 1 1-1.5-1.93" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 4.5h5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
     </svg>
   );
 }

@@ -1,0 +1,6 @@
+ALTER TABLE "Gear"
+ADD COLUMN IF NOT EXISTS "listingUrl" TEXT;
+
+UPDATE "Gear"
+SET "listingUrl" = NULL
+WHERE "soldAt" IS NOT NULL;

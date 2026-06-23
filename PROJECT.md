@@ -31,7 +31,7 @@ Web je zároveň **učební projekt** (první projekt majitele v Next.js). Proto
 | Styly                       | Tailwind CSS                                                 |
 | Databáze                    | Neon Postgres                                                |
 | ORM                         | Prisma 6 (klient importovat z `@/lib/prisma`)                |
-| Přihlašování                | Auth.js (NextAuth v5)                                        |
+| Přihlašování                | Vlastní DB-session auth (jose JWT v cookie + bcrypt, session v DB) |
 | Média (obrázky/audio/video) | Cloudinary                                                   |
 | Odesílání mailu (formulář)  | Resend                                                       |
 | Editor článků (admin)       | Tiptap                                                       |
@@ -76,15 +76,19 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 /hudba                → kapela + sólo dráha
 /programovani         → landing page
 /studio               → landing page (recording / mix / master / produkce)
+/gear                 → výpis gearu
+/gear/[id]            → detail gearu
+/koncerty             → výpis koncertů
 /kontakt              → kontaktní formulář (i jako modal z ikony obálky)
 /admin                → administrace (chráněné přihlášením)
 /admin/clanky         → CRUD článků
 /admin/stitky         → CRUD štítků
-/admin/komentare      → moderace diskuse
 /admin/zpravy         → příchozí zprávy z formuláře
+/admin/gear           → CRUD gearu a soukromých údajů
+/admin/koncerty       → CRUD koncertů a přiřazení gearu
 
 — budoucí (zatím nestavět) —
-/koncerty, /gear, /fanklub, /admin/* (fakturace, kalorické tabulky, finance, file-transfer)
+/fanklub, /admin/* (fakturace, kalorické tabulky, finance, file-transfer)
 
 ```
 
@@ -99,7 +103,7 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 
 `/blog/[slug]` **Detail článku**
 
-- Pořadí: cover 16:9 → perex → **obsah** (Tiptap JSON: text + vložené bloky) → štítky → **diskuse** (komentáře, vlákna).
+- Pořadí: cover 16:9 → perex → **obsah** (Tiptap JSON: text + vložené bloky) → štítky. (**Diskuse/komentáře pod články se NEIMPLEMENTUJÍ** — rozhodnuto neřešit, viz sekce 8.)
 - **Obsah článku** se ukládá jako **Tiptap JSON dokument** (ne HTML). Text lze obohacovat o **vkládací bloky** — **galerie** a **přehrávač (audio)** lze vložit **kdekoli v textu**, včetně **více bloků stejného typu v jednom článku** (kombinace galerie + přehrávače). Pořadí bloků na stránce = pořadí v dokumentu.
 - U článku se zobrazí **„Aktualizováno: datum“** z `updatedAt`, pokud se liší od `publishedAt` o více než cca jeden den.
 - Článek může být i **recenze** (např. hudebního vybavení). Recenze sdílí stejnou strukturu jako běžný článek (cover, perex, obsah, štítky…), navíc má volitelná **hodnotící kritéria** — skóre 0–10:
@@ -128,13 +132,15 @@ Pod hlavičkou jde **rovnou obsah** — žádný slider/hero carousel.
 
 ## 8. Administrace (`/admin`)
 
-Za přihlášením (Auth.js, role ADMIN/EDITOR). Obsahuje:
+Za přihlášením (vlastní DB-session auth, role ADMIN/EDITOR). Obsahuje:
 
-- Dashboard (počty článků, nepřečtené zprávy, čekající komentáře).
+- Dashboard (počty článků, nepřečtené zprávy).
 - Články — CRUD (Tiptap editor, cover/galerie/audio přes Cloudinary, publikovat/skrýt, štítky). U recenzí navíc volitelná hodnotící kritéria (skóre 0–10, viz sekce 7).
 - Štítky — CRUD.
-- Komentáře — moderace (schválit / spam / smazat).
 - Zprávy z formuláře — čtení, označení přečteno.
+- Gear a koncerty — CRUD (viz sekce 10).
+
+> **Komentáře/diskuse pod články se NEIMPLEMENTUJÍ.** Rozhodnuto neřešit (na osobním webu by šlo o minimální provoz a hlavně zdroj spamu). Tabulka `Comment` zůstává ve schématu jako nevyužitá (kdyby se rozhodnutí v budoucnu změnilo), ale žádné UI ani moderace se nestaví.
 
 ### Autentizace a relace
 
@@ -156,30 +162,76 @@ Tabulky už existují v databázi (Prisma 6, Postgres/Neon). Klient importovat z
 - **Tag**: id, name, slug (unikátní). Relace: articles (přes ArticleTag).
 - **ArticleTag** (M:N): articleId (FK), tagId (FK), složený PK.
 - **Media**: id, articleId (FK→Article), **blockId?** (FK→ContentBlock), type (MediaType), url, publicId, caption?, position (default 0, pořadí uvnitř bloku), createdAt.
-- **Comment**: id, articleId (FK→Article), authorId? (FK→User), authorName?, body (Text), parentId? (self-relace, vlákna), status (default PENDING), createdAt.
+- **Comment**: id, articleId (FK→Article), authorId? (FK→User), authorName?, body (Text), parentId? (self-relace, vlákna), status (default PENDING), createdAt. **(Tabulka existuje ve schématu, ale je NEVYUŽITÁ — komentáře se neimplementují, viz sekce 8.)**
 - **ContactMessage**: id, name, email, subject?, body (Text), read (default false), createdAt.
 
-## 10. Budoucí moduly (zatím NESTAVĚT, jen evidence)
+## 10. Gear a koncerty
 
-Koncerty (`Concert`) · Fanklub (rozšíření User o roli FAN + profil) · File transfer à la WeTransfer jen pro majitele · Admin nástroje převzaté z Nette: fakturace, kalorické tabulky, správa financí. Každý modul až na samostatný pokyn.
+Modul **Gear + koncerty** je moderní evidence vybavení a koncertů. Nejde o 1:1 překlopení starého Nette kódu.
 
-### Gear (`/gear`, `/admin/gear` — zatím nestavět)
+### Gear (`/gear`, `/admin/gear`)
 
-Samostatná entita **`Gear`** (nebo `GearItem`) s vlastními informacemi o kusu vybavení: specifikace, jak dlouho ho majitel vlastní, na kolika a kterých koncertech byl použit, fotky atd. Veřejná stránka/karta gearu + CRUD v administraci.
+Samostatná entita **`Gear`** s vlastními informacemi o kusu vybavení: značka, model, kategorie, poznámka, datum nákupu/prodeje, šuplík, cover obrázek, URL odkazy, URL veřejného inzerátu při prodeji, kontejner/pedalboard a skupina stejných kusů.
 
-**Recenze (článek) a gear jsou dvě nezávislé entity.** Propojují se přes **relační M:N tabulku** (`ArticleGear` — případně alias `ReviewGear`; recenze = článek s hodnotícími kritérii). Propojení je **volitelné a obousměrné**:
+`listingUrl` (odkaz na veřejný inzerát) se zobrazuje veřejně jen u neprodaného gearu. Jakmile má gear vyplněné `soldAt`, `listingUrl` se při uložení vždy nastaví na `null` a na webu se nezobrazuje.
+
+Soukromé údaje jsou v **`GearPrivateInfo`** (sériové číslo, ceny, kontakty prodejce/kupujícího). Tato tabulka je **admin-only** a veřejné stránky ji nesmí vůbec číst.
+
+**Recenze (článek) a gear jsou dvě nezávislé entity.** Propojují se přes relační tabulku `ArticleGear`. Propojení je **volitelné a obousměrné**, ale jeden konkrétní gear může mít přiřazený **maximálně jeden** blog článek/recenzi; jeden článek může naopak odkazovat více kusů gearu:
 
 - recenze **může, ale nemusí** odkazovat na jeden či více kusů gearu,
 - gear **může, ale nemusí** mít navázanou jednu či více recenzí,
 - na stránce/kartě gearu se zobrazí **jen prolink** na navázanou recenzi (odkaz na plný detail článku) — **obsah recenze se do karty gearu nenačítá ani neduplikuje**; stejně naopak gear na kartě recenze jen odkaz,
-- **párování je ruční** v administraci; jeden gear může mít **více recenzí**, jedna recenze může odkazovat na **více kusů gearu**,
+- **párování je ruční** v administraci přes vyhledávací našeptávač, ne přes dlouhý checkbox seznam,
 - gear i recenzi musí jít vytvořit **nezávisle** (gear bez recenze, recenze bez gearu).
 
 **Stejný model gearu vlastněný víckrát:** pokud majitel vlastní **více kusů stejného modelu** (např. tři stejné kytary), **nikdy se neslučují do jednoho záznamu** — každý kus je **samostatný záznam** s vlastní historií (nákup, koncerty, fotky…). Kusy stejného modelu lze volitelně **seskupit relací (grouping)**; statistiky (počet koncertů, dny vlastnictví…) se u skupiny **dynamicky sčítají** z členů, **přiřazená recenze se zobrazí u všech členů skupiny** (odkaz na stejný článek). Seskupení jde **kdykoli zrušit** — záznamy zůstanou, zmizí jen vazba skupiny.
 
+**Kontejnery / pedalboardy:** `containerId` znamená, že kus je aktuálně součástí jiného kusu. `containerId` a `sameModelGroupId` jsou dvě různé nezávislé věci. Při smazání/prodeji kontejneru se obsah nesmí smazat; DB relace má `onDelete: SetNull`.
+
+**Koncerty a statistiky:** koncerty se počítají výhradně z vlastních řádků `GearOnGig`. Při zaškrtnutí kontejneru u koncertu se zapíše vazba pro kontejner i pro každý jeho aktuální obsah zvlášť. Historické vazby se zpětně nepřepisují, když se později změní obsah pedalboardu. Počty koncertů ani dny vlastnictví se neukládají; počítají se dynamicky.
+
+### Koncerty (`/koncerty`, `/admin/koncerty`)
+
+`Gig` eviduje datum, město, místo, název akce/festivalu, kapelu, poznámku a odkazy na fotky, záznam nebo YouTube. Finance se sem neukládají. Gear se ke koncertům váže přes `GearOnGig`.
+
+### Budoucí moduly (zatím nestavět)
+
+Fanklub (rozšíření User o roli FAN + profil) · File transfer à la WeTransfer jen pro majitele · Admin nástroje převzaté z Nette: fakturace, kalorické tabulky, správa financí. Každý modul až na samostatný pokyn.
+
 ---
 
-## 11. Jak pracovat na tomto projektu (pravidla pro agenta)
+## 11. Připomínky (Reminders) — budoucí modul (zatím nestavět)
+
+Jednoduchý osobní reminder v adminu: zadám událost a nechám si na ni poslat e-mailové upozornění předem. Doručení přes **Resend** (už v projektu). Staví se **později**, až poběží ostrý provoz (kvůli testování cronu).
+
+**Zadávání (styl Google):**
+
+- Pole: **text/zpráva**, **datum a čas události** (na minutu, např. 5. 3. 2026 9:31).
+- **Čas upozornění** se zadává jako **odstup před událostí** (rozbalovák), ne jako absolutní čas: *v čas události* / *nejbližší celá hodina před* / *2 h* / *3 h* / *6 h* / *12 h* / *24 h* před. U každé volby se v UI ukáže **dopočítaný konkrétní čas**, ať uživatel vidí výsledek.
+- **Default** po vyplnění času události: `notifyAt` = čas události **zaokrouhlený dolů na celou hodinu** (9:31 → 9:00). Když je událost přesně na celou hodinu, default je o hodinu dřív (ať je vždy aspoň hodina rezerva). Uživatel může změnit.
+- `notifyAt` **vždy padne na celou hodinu** (minuty = 00) — záměrně ladí s hodinovým cronem (běh v celou hodinu → upozornění na celou hodinu = doručení bez zpoždění). Výjimka „v čas události": u kulaté události se trefí přesně, u nekulaté UI upozorní, že při hodinovém cronu dorazí v nejbližší celou hodinu.
+- Vždy **jedno upozornění** na událost (žádná víc-upozornění).
+
+**Časové pásmo (DŮLEŽITÉ):** zadávání i zobrazení v **Europe/Prague** (s letním/zimním časem), ukládání a porovnávání interně v **UTC**. Hlídat, ať se posun nerozjede.
+
+**Datový model:** tabulka **`Reminder`** — `message`, `eventAt` (DateTime, čas události), `notifyAt` (DateTime, UTC, kdy poslat mail), `sent` (Bool default false), `sentAt` (DateTime?), `createdAt`.
+
+**Doručení přes Vercel Cron:**
+
+- Cron route (např. `/api/cron/reminders`) volaná **Vercelem jednou za hodinu** (`vercel.json`); free plán to pohodlně zvládne.
+- **KRITICKÉ pro spolehlivost:** route vždy vybírá **VŠECHNY** remindery s `notifyAt <= now()` **a** `sent = false` (ne jen ty „přesně v aktuální hodinu"), aby nic nepropadlo mezi běhy. Po odeslání označí `sent = true`, `sentAt = now()`.
+- **Bezpečnost:** route chránit tajemstvím `CRON_SECRET` (ověřit autorizační hlavičku), aby ji nešlo spouštět zvenčí.
+- **Idempotence:** díky příznaku `sent` se mail nepošle dvakrát, i kdyby cron běžel vícekrát.
+- **Architektura nezávislá na frekvenci:** logika nesmí předpokládat „běh po hodině". Kdyby byla později potřeba **přesnost na minutu**, NEŘEŠIT placeným Vercel plánem — levná/free cesta je externí cron služba (např. cron-job.org) volající tu samou chráněnou route každou minutu; web zůstane na free Vercelu.
+
+**Admin UI:** formulář (výše) + tabulka připomínek pod sebou (nadcházející / odeslané), editace, mazání. Calendar view je volitelný bonus, ne nutnost.
+
+> **Poznámka k hostingu (do budoucna):** Zvažuje se případný přechod z Vercelu na **vlastní VPS** (více webů/aplikací pohromadě, plná kontrola nad cronem i limity). Není to teď priorita — řešit až podle reálných limitů Vercelu napříč více aplikacemi, ne kvůli jediné funkci. Reminder modul tomu má být přizpůsoben (route nezávislá na způsobu spouštění cronu).
+
+---
+
+## 12. Jak pracovat na tomto projektu (pravidla pro agenta)
 
 - **Dělej malé kroky.** Jeden úkol = jedna ucelená změna. Neprováděj víc nesouvisejících věcí naráz.
 - **Vždy stručně vysvětli, co a proč jsi změnil**, a které soubory.
@@ -187,6 +239,7 @@ Samostatná entita **`Gear`** (nebo `GearItem`) s vlastními informacemi o kusu 
 - **Žádné tajné klíče v kódu** — vždy přes env proměnné.
 - **Prisma klient** importuj z `@/lib/prisma` (nevytvářej nové instance PrismaClient).
 - **Drž grafitový tmavý styl** a vlastní `<Icon />` komponentu (žádná knihovna ikon).
+- **Textarea ve formulářích:** nepoužívej obyčejnou statickou `<textarea>`. V adminu i nových formulářích používej `AutoGrowTextarea`, která se sama zvětšuje podle obsahu (viz perex článku / hromadný import koncertů).
 - **V terminálu nic nespouštěj sám**, pokud o to nejsi výslovně požádán — místo toho mi napiš, jaký příkaz mám spustit.
 - Když je zadání nejasné nebo něco není v tomto dokumentu rozhodnuté, **zeptej se**, nedomýšlej si.
 - Majitel je začátečník v Next.js — preferuj srozumitelná, čitelná řešení před „chytrými" zkratkami.

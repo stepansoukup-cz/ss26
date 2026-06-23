@@ -106,6 +106,18 @@ export function PublicHeaderNav({ socialLinks }: { socialLinks: SocialLink[] }) 
       >
         Studio
       </Link>
+      <Link
+        href="/gear"
+        className={textClassName(isActive(pathname, "/gear"))}
+      >
+        Gear
+      </Link>
+      <Link
+        href="/koncerty"
+        className={textClassName(isActive(pathname, "/koncerty"))}
+      >
+        Koncerty
+      </Link>
       {socialLinks.map((item) => {
         if (!item.href) {
           return null;
